@@ -1,10 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getStoredLang, setStoredLang, type AppLang } from '../services/i18n';
 import { setAuthenticated } from '../services/authSession';
 import { supabase } from '../lib/supabaseClient';
 
 type Language = AppLang;
+type LoginApiResponse = {
+  message: string;
+  user?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    preferredLang: AppLang;
+    avatarUrl: string | null;
+  };
+  session?: {
+    access_token: string;
+    refresh_token: string;
+    expires_at: number;
+  };
+};
 
 export default function Login() {
   const navigate = useNavigate();
@@ -14,13 +30,32 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [language, setLanguage] = useState<Language>(() => getStoredLang());
-  
+
   const [errors, setErrors] = useState({ email: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [isFormValid, setIsFormValid] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  // Validation Logic
+  const storeAuthenticatedUser = (
+    normalizedEmail: string,
+    profile?: { firstName: string; lastName: string } | null
+  ) => {
+    setStoredLang(language);
+    localStorage.setItem('aeroguide_user_email', normalizedEmail);
+    setAuthenticated(true);
+
+    if (profile) {
+      localStorage.setItem(
+        'aeroguide_user_profile',
+        JSON.stringify({
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+        })
+      );
+    }
+  };
+
   useEffect(() => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const isEmailValid = emailRegex.test(email);
@@ -28,11 +63,49 @@ export default function Login() {
 
     setErrors({
       email: email && !isEmailValid ? 'Please enter a valid email address' : '',
-      password: password && !isPasswordValid ? 'Password must be at least 6 characters' : ''
+      password: password && !isPasswordValid ? 'Password must be at least 6 characters' : '',
     });
 
     setIsFormValid(isEmailValid && isPasswordValid);
   }, [email, password]);
+
+  useEffect(() => {
+    const authError = searchParams.get('error_description') || searchParams.get('error');
+    if (authError) {
+      setLoginError(authError);
+      setIsGoogleLoading(false);
+      return;
+    }
+
+    let isActive = true;
+
+    const restoreSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      const session = data.session;
+
+      if (!isActive || error || !session?.user?.email) {
+        setIsGoogleLoading(false);
+        return;
+      }
+
+      const metadata = session.user.user_metadata || {};
+      storeAuthenticatedUser(session.user.email, {
+        firstName: metadata.first_name || metadata.full_name || '',
+        lastName: metadata.last_name || '',
+      });
+
+      setIsGoogleLoading(false);
+
+      const next = searchParams.get('next');
+      navigate(next && next.startsWith('/') ? next : '/dashboard');
+    };
+
+    void restoreSession();
+
+    return () => {
+      isActive = false;
+    };
+  }, [navigate, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,31 +115,66 @@ export default function Login() {
     setLoginError('');
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
-      });
+      const normalizedEmail = email.trim().toLowerCase();
+      let profile: { firstName: string; lastName: string } | null = null;
 
-      if (error) {
-        setLoginError(error.message || 'Invalid email or password');
-        setIsLoading(false);
-        return;
-      }
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: normalizedEmail,
+            password,
+          }),
+        });
 
-      // Store language & basic auth context for dashboard
-      setStoredLang(language);
-      localStorage.setItem('aeroguide_user_email', email.trim().toLowerCase());
-      setAuthenticated(true);
+        let data: LoginApiResponse | null = null;
+        try {
+          data = (await res.json()) as LoginApiResponse;
+        } catch {
+          data = null;
+        }
 
-      if (data.user?.user_metadata) {
-        localStorage.setItem(
-          'aeroguide_user_profile',
-          JSON.stringify({
+        if (!res.ok) {
+          setLoginError(data?.message || 'Invalid email or password');
+          setIsLoading(false);
+          return;
+        }
+
+        if (data?.session?.access_token && data.session.refresh_token) {
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+        }
+
+        if (data?.user) {
+          profile = {
+            firstName: data.user.firstName || '',
+            lastName: data.user.lastName || '',
+          };
+        }
+      } catch {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password,
+        });
+
+        if (error) {
+          setLoginError(error.message || 'Invalid email or password');
+          setIsLoading(false);
+          return;
+        }
+
+        if (data.user?.user_metadata) {
+          profile = {
             firstName: data.user.user_metadata.first_name || '',
             lastName: data.user.user_metadata.last_name || '',
-          })
-        );
+          };
+        }
       }
+
+      storeAuthenticatedUser(normalizedEmail, profile);
 
       if (rememberMe) {
         localStorage.setItem('aeroguide_remember_me', 'true');
@@ -76,377 +184,331 @@ export default function Login() {
 
       const next = searchParams.get('next');
       navigate(next && next.startsWith('/') ? next : '/dashboard');
-    } catch {
-      setLoginError('An unexpected error occurred. Please try again.');
+    } catch (error) {
+      setLoginError(
+        error instanceof Error && error.message
+          ? error.message
+          : 'Sign-in failed. Check that the backend or Supabase connection is available.'
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setLoginError('');
+    setIsGoogleLoading(true);
+
+    const next = searchParams.get('next');
+    const redirectUrl = new URL(`${window.location.origin}/login`);
+    if (next && next.startsWith('/')) {
+      redirectUrl.searchParams.set('next', next);
+    }
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl.toString(),
+      },
+    });
+
+    if (error) {
+      setLoginError(error.message || 'Google sign-in failed. Please try again.');
+      setIsGoogleLoading(false);
+    }
+  };
+
   return (
     <main
-      className="min-h-screen w-full flex relative overflow-hidden font-sans text-white"
+      className="min-h-screen bg-[#0A1A2F] px-4 py-8 text-slate-900 sm:px-6 lg:px-8 relative overflow-hidden"
       aria-label="AEROGUIDE login experience"
+      style={{
+        backgroundImage: `url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=1600&auto=format&fit=crop')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
     >
-      {/* Background Image with Overlay */}
-      <div
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage:
-            'url("https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2074&auto=format&fit=crop")',
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-aeroguide-navy/95 via-aeroguide-navy/85 to-aeroguide-navy/40 backdrop-blur-[2px]" />
-      </div>
+      {/* Background Overlay */}
+      <div className="absolute inset-0 bg-[#0A1A2F]/80 backdrop-blur-[4px]" />
 
-      {/* Global Shell: brand + language */}
-      <div className="relative z-20 w-full">
-        <header className="flex items-center justify-between px-6 lg:px-12 pt-6 lg:pt-8">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 lg:w-12 lg:h-12 bg-aeroguide-gold rounded-2xl flex items-center justify-center shadow-lg shadow-aeroguide-gold/25">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                className="w-6 h-6 lg:w-7 lg:h-7 text-aeroguide-navy"
-                stroke="currentColor"
-                strokeWidth="2.3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M22 2L11 13" />
-                <path d="M22 2L15 22L11 13L2 9L22 2Z" />
-              </svg>
+      {/* Header */}
+      <div className="relative mx-auto mb-12 flex w-full max-w-7xl items-center justify-between z-10">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FDB913] shadow-[0_10px_30px_rgba(253,185,19,0.3)]">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className="h-6 w-6 text-[#0A1A2F]"
+              stroke="currentColor"
+              strokeWidth="2.3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M22 2L11 13" />
+              <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+            </svg>
+          </div>
+          <div>
+            <div className="text-xl font-extrabold tracking-[0.18em] text-white">
+              AEROGUIDE
             </div>
-            <div className="flex flex-col">
-              <span className="text-xl lg:text-2xl font-extrabold tracking-[0.2em] text-white">
-                AEROGUIDE
-              </span>
-              <span className="text-[10px] lg:text-xs uppercase tracking-[0.25em] text-slate-300/80">
-                Smart airport navigation
-              </span>
+            <div className="text-[11px] uppercase tracking-[0.24em] text-slate-300">
+              Smart airport navigation
             </div>
           </div>
+        </div>
 
-          {/* Language Switcher */}
-          <nav
-            aria-label="Language selector"
-            className="flex gap-1.5 lg:gap-2 bg-aeroguide-navy/40 border border-white/10 rounded-full px-1.5 py-1 backdrop-blur"
-          >
-            {(['EN', 'SI', 'TA'] as Language[]).map((lang) => (
-              <button
-                key={lang}
-                type="button"
-                onClick={() => {
-                  setLanguage(lang);
-                  setStoredLang(lang);
-                }}
-                className={`px-2.5 lg:px-3.5 py-0.5 rounded-full text-[11px] lg:text-xs font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aeroguide-gold/80 focus-visible:ring-offset-2 focus-visible:ring-offset-aeroguide-navy ${
-                  language === lang
-                    ? 'bg-aeroguide-gold text-aeroguide-navy shadow-lg shadow-aeroguide-gold/30'
-                    : 'bg-white/5 text-slate-100 hover:bg-white/20'
-                }`}
-                aria-pressed={language === lang}
-              >
-                {lang}
-              </button>
-            ))}
-          </nav>
-        </header>
+        <nav
+          aria-label="Language selector"
+          className="flex gap-1 rounded-full border border-white/20 bg-white/5 p-1 backdrop-blur-md"
+        >
+          {(['EN', 'SI', 'TA'] as Language[]).map((lang) => (
+            <button
+              key={lang}
+              type="button"
+              onClick={() => {
+                setLanguage(lang);
+                setStoredLang(lang);
+              }}
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                language === lang
+                  ? 'bg-[#FDB913] text-[#0A1A2F]'
+                  : 'text-white hover:bg-white/10'
+              }`}
+            >
+              {lang}
+            </button>
+          ))}
+        </nav>
+      </div>
 
-        <section className="container mx-auto px-6 lg:px-12 pb-12 pt-10 lg:pt-14 relative flex flex-col lg:flex-row items-center justify-center min-h-[calc(100vh-6rem)] gap-10 lg:gap-20">
-          {/* Left Side: Hero Content */}
-          <div className="w-full lg:w-1/2 flex flex-col items-center lg:items-start text-center lg:text-left space-y-7 lg:space-y-9 max-w-xl">
-            <h1 className="text-3.5xl md:text-4xl lg:text-5xl xl:text-6xl font-semibold lg:font-bold leading-tight tracking-tight">
-              Navigate any airport
-              <br className="hidden md:block" />
-              <span className="block mt-2 text-aeroguide-gold">
-                calmly and confidently.
-              </span>
+      {/* Main Content Area */}
+      <section className="relative mx-auto w-full max-w-7xl rounded-[32px] border border-white/10 bg-white/5 p-4 shadow-2xl backdrop-blur-2xl z-10">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          
+          {/* LEFT SIDE: Form */}
+          <div className="rounded-[28px] px-6 py-10 sm:px-12">
+            <h1 className="text-lg font-medium uppercase tracking-widest text-slate-300">
+              Holla,
             </h1>
+            <h2 className="mt-2 text-4xl font-black uppercase leading-none tracking-tight text-[#FDB913] sm:text-5xl">
+              Welcome Back
+            </h2>
 
-            <p className="text-base md:text-lg text-slate-200/90 leading-relaxed">
-              Real-time indoor navigation, live flight context, and personalized passenger
-              profiles that follow you from check‑in to boarding.
+            <p className="mt-5 text-sm leading-relaxed text-slate-300">
+              Hey, welcome back to your special place to navigate the skies.
             </p>
 
-            <div className="flex flex-col sm:flex-row sm:items-center gap-5 pt-2">
-              <div className="flex -space-x-3 justify-center sm:justify-start">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-aeroguide-navy bg-slate-300 overflow-hidden shadow-md shadow-black/30"
-                  >
-                    <img
-                      src={`https://i.pravatar.cc/100?img=${i + 10}`}
-                      alt="Traveler"
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                ))}
+            <form onSubmit={handleSubmit} className="mt-10 space-y-6" noValidate>
+              {loginError && (
+                <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200 backdrop-blur-sm">
+                  {loginError}
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="email" className="mb-2 block text-sm font-semibold text-white">
+                  Email address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  name="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={`w-full rounded-xl border px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-slate-500 ${
+                    errors.email
+                      ? 'border-red-400/50 bg-red-500/5 focus:border-red-400'
+                      : 'border-white/10 bg-white/5 focus:border-[#FDB913] focus:bg-white/10'
+                  }`}
+                  placeholder="name@example.com"
+                />
+                {errors.email && <p className="mt-2 text-xs text-red-400">{errors.email}</p>}
               </div>
-              <div className="flex flex-col text-xs md:text-sm text-slate-100">
-                <span className="font-semibold md:font-bold">
-                  10,000+ travelers guided every day
-                </span>
-                <span className="text-aeroguide-gold/90">Across major international hubs</span>
-              </div>
-            </div>
-          </div>
 
-          {/* Right Side: Login Card */}
-          <div className="w-full max-w-md lg:w-[420px]">
-            <section
-              aria-labelledby="login-title"
-              className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-3xl p-6 md:p-8 shadow-2xl shadow-black/30"
-            >
-              <header className="mb-7">
-                <h2
-                  id="login-title"
-                  className="text-2xl md:text-2.5xl font-semibold md:font-bold text-white"
-                >
-                  Sign in to your journey
-                </h2>
-                <p className="text-slate-300 text-xs md:text-sm mt-2">
-                  Enter your credentials to access your trip details.
-                </p>
-              </header>
-
-              <form
-                onSubmit={handleSubmit}
-                className="space-y-5"
-                noValidate
-                aria-describedby={
-                  errors.email || errors.password ? 'login-error-summary' : undefined
-                }
-              >
-                {/* Login Error Message */}
-                {loginError && (
-                  <div className="bg-red-500/20 border border-red-400/30 rounded-xl px-4 py-3 text-red-300 text-sm">
-                    {loginError}
-                  </div>
-                )}
-
-                {/* Email Field */}
-                <div className="space-y-2">
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-medium text-slate-200 ml-1"
-                  >
-                    Email address
-                  </label>
+              <div>
+                <label htmlFor="password" className="mb-2 block text-sm font-semibold text-white">
+                  Password
+                </label>
+                <div className="relative">
                   <input
-                    id="email"
-                    type="email"
-                    name="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={`w-full px-4 py-3.5 rounded-xl bg-white/5 border ${
-                      errors.email
-                        ? 'border-red-400 focus:border-red-400'
-                        : 'border-white/10 focus:border-aeroguide-gold'
-                    } text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-aeroguide-gold transition-all text-sm`}
-                    placeholder="name@example.com"
-                    aria-invalid={Boolean(errors.email)}
-                    aria-describedby={errors.email ? 'email-error' : undefined}
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`w-full rounded-xl border px-4 py-3.5 pr-16 text-sm text-white outline-none transition placeholder:text-slate-500 ${
+                      errors.password
+                        ? 'border-red-400/50 bg-red-500/5 focus:border-red-400'
+                        : 'border-white/10 bg-white/5 focus:border-[#FDB913] focus:bg-white/10'
+                    }`}
+                    placeholder="••••••••••••"
                   />
-                  {errors.email && (
-                    <p id="email-error" className="text-red-400 text-xs ml-1">
-                      {errors.email}
-                    </p>
-                  )}
-                </div>
-
-                {/* Password Field */}
-                <div className="space-y-2">
-                  <label
-                    htmlFor="password"
-                    className="block text-sm font-medium text-slate-200 ml-1"
-                  >
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className={`w-full px-4 py-3.5 rounded-xl bg-white/5 border ${
-                        errors.password
-                          ? 'border-red-400 focus:border-red-400'
-                          : 'border-white/10 focus:border-aeroguide-gold'
-                      } text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-aeroguide-gold transition-all pr-12 text-sm`}
-                      placeholder="••••••••"
-                      aria-invalid={Boolean(errors.password)}
-                      aria-describedby={errors.password ? 'password-error' : undefined}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors text-xs font-medium"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                  {errors.password && (
-                    <p id="password-error" className="text-red-400 text-xs ml-1">
-                      {errors.password}
-                    </p>
-                  )}
-                </div>
-
-                {/* Error summary for screen readers */}
-                {(errors.email || errors.password) && (
-                  <p
-                    id="login-error-summary"
-                    className="text-red-300/90 text-xs"
-                    aria-live="polite"
-                  >
-                    Please fix the highlighted fields before continuing.
-                  </p>
-                )}
-
-                {/* Extras */}
-                <div className="flex items-center justify-between text-xs md:text-sm">
-                  <label className="inline-flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      className="peer sr-only"
-                      checked={rememberMe}
-                      onChange={() => setRememberMe(!rememberMe)}
-                    />
-                    <span
-                      className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                        rememberMe
-                          ? 'bg-aeroguide-gold border-aeroguide-gold'
-                          : 'border-slate-400/80 group-hover:border-white'
-                      }`}
-                      aria-hidden="true"
-                    >
-                      {rememberMe && (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          className="w-3.5 h-3.5 text-aeroguide-navy"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      )}
-                    </span>
-                    <span className="text-slate-300 group-hover:text-white transition-colors">
-                      Remember this device
-                    </span>
-                  </label>
-
                   <button
                     type="button"
-                    onClick={() => navigate('/forgot-password')}
-                    className="text-aeroguide-gold hover:text-yellow-300 font-medium transition-colors"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-white transition"
                   >
-                    Forgot password?
+                    {showPassword ? 'Hide' : 'Show'}
                   </button>
                 </div>
+                {errors.password && <p className="mt-2 text-xs text-red-400">{errors.password}</p>}
+              </div>
 
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={!isFormValid || isLoading}
-                  className={`w-full py-3.5 rounded-xl font-semibold md:font-bold text-base md:text-lg shadow-lg transition-all duration-300 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aeroguide-gold/80 focus-visible:ring-offset-2 focus-visible:ring-offset-aeroguide-navy ${
-                    isFormValid && !isLoading
-                      ? 'bg-aeroguide-gold text-aeroguide-navy hover:bg-yellow-400 hover:shadow-aeroguide-gold/40 hover:-translate-y-0.5'
-                      : 'bg-slate-600/60 text-slate-400 cursor-not-allowed'
-                  }`}
-                >
-                  {isLoading ? (
-                    <>
-                      <svg
-                        className="animate-spin h-5 w-5 text-current"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      <span>Signing in...</span>
-                    </>
-                  ) : (
-                    'Sign in'
-                  )}
-                </button>
+              <div className="flex items-center justify-between pt-2">
+                <label className="flex cursor-pointer items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={() => setRememberMe(!rememberMe)}
+                    className="h-4 w-4 rounded border-white/20 bg-white/10 text-[#FDB913] focus:ring-[#FDB913] focus:ring-offset-0"
+                  />
+                  <span className="text-sm font-medium text-slate-300">Remember me</span>
+                </label>
 
-                {/* Divider */}
-                <div className="relative flex items-center py-1.5">
-                  <div className="flex-grow border-t border-white/10" />
-                  <span className="flex-shrink-0 mx-3 text-slate-400 text-[11px] md:text-xs uppercase tracking-[0.2em]">
-                    or continue with
-                  </span>
-                  <div className="flex-grow border-t border-white/10" />
-                </div>
-
-                {/* Google Button */}
                 <button
                   type="button"
-                  className="w-full py-3.5 rounded-xl bg-white text-slate-800 font-semibold text-sm md:text-base hover:bg-slate-100 transition-colors flex items-center justify-center gap-3 border border-slate-200/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aeroguide-gold/80 focus-visible:ring-offset-2 focus-visible:ring-offset-aeroguide-navy"
+                  onClick={() => navigate('/forgot-password')}
+                  className="text-sm font-semibold text-[#FDB913] hover:text-yellow-300 transition"
                 >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      fill="#4285F4"
-                    />
-                    <path
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      fill="#34A853"
-                    />
-                    <path
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      fill="#FBBC05"
-                    />
-                    <path
-                      d="M12 4.66c1.61 0 3.1.56 4.28 1.69l3.19-3.19C17.45 1.14 14.95 0 12 0 7.7 0 3.99 2.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      fill="#EA4335"
-                    />
-                  </svg>
-                  <span>Continue with Google</span>
+                  Forgot Password?
                 </button>
+              </div>
 
-                <p className="text-center mt-4 text-slate-300 text-xs md:text-sm">
-                  Don&apos;t have an account?{' '}
-                  <button
-                    type="button"
-                    onClick={() => navigate('/signup')}
-                    className="text-aeroguide-gold font-semibold hover:underline"
-                  >
-                    Create an account
-                  </button>
-                </p>
-              </form>
-            </section>
+              <button
+                type="submit"
+                disabled={!isFormValid || isLoading}
+                className={`mt-4 w-full rounded-xl px-4 py-4 text-sm font-bold tracking-wide transition-all ${
+                  isFormValid && !isLoading
+                    ? 'bg-[#FDB913] text-[#0A1A2F] shadow-[0_4px_14px_rgba(253,185,19,0.3)] hover:bg-[#e6a60d]'
+                    : 'cursor-not-allowed bg-white/5 border border-white/10 text-slate-500' // Fixed the ugly light grey disabled button
+                }`}
+              >
+                {isLoading ? 'Signing in...' : 'Sign In'}
+              </button>
+
+              <div className="relative py-4">
+                <div className="absolute inset-x-0 top-1/2 border-t border-white/10" />
+                <span className="relative mx-auto block w-fit bg-[#0F2038] px-4 text-xs font-semibold uppercase tracking-widest text-slate-500 rounded-full">
+                  Or
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => { void handleGoogleSignIn(); }}
+                disabled={isGoogleLoading}
+                className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 4.66c1.61 0 3.1.56 4.28 1.69l3.19-3.19C17.45 1.14 14.95 0 12 0 7.7 0 3.99 2.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                </svg>
+                <span>{isGoogleLoading ? 'Connecting...' : 'Sign in with Google'}</span>
+              </button>
+
+              <p className="pt-2 text-center text-sm text-slate-400">
+                Don't have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => navigate('/signup')}
+                  className="font-bold text-[#FDB913] hover:text-yellow-300 transition"
+                >
+                  Sign Up
+                </button>
+              </p>
+            </form>
           </div>
-        </section>
-      </div>
+
+          {/* RIGHT SIDE: Clean Glassmorphism Graphic */}
+          <div className="relative flex flex-col justify-center rounded-[28px] px-6 py-10 sm:px-12 overflow-hidden">
+            
+            <div className="relative z-10 mb-10">
+              <h1 className="text-4xl font-black uppercase leading-[1.05] tracking-tight text-[#FDB913] sm:text-5xl">
+                Access your saved <br /> passenger details.
+              </h1>
+              <p className="mt-5 max-w-sm text-sm leading-relaxed text-slate-300">
+                Sign in to manage passengers, saved routes, preferred languages and view real-time flight dashboards.
+              </p>
+            </div>
+
+            {/* Structured Glass Dashboard Mockup (Fixes the messy overlap) */}
+            <div className="relative w-full max-w-md mx-auto">
+              {/* Background Glow */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#FDB913]/20 blur-[80px] rounded-full pointer-events-none" />
+              
+              {/* Main Mockup Card */}
+              <div className="relative flex flex-col gap-5 rounded-[24px] border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
+                
+                {/* Mockup Header */}
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FDB913]">
+                      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-[#0A1A2F]" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 2L11 13" />
+                        <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Aeroguide</div>
+                      <div className="text-sm font-bold text-white">Smart Journeys</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-300">
+                    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Secure
+                  </div>
+                </div>
+
+                {/* Mockup Flight Card */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-inner">
+                  <div className="mb-4 flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Next Flight</span>
+                    <div className="flex items-center gap-2 text-lg font-bold text-white">
+                      <span>LHR</span>
+                      <svg className="h-4 w-4 text-[#FDB913]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12h14m0 0l-7-7m7 7l-7 7" />
+                      </svg>
+                      <span>JFK</span>
+                    </div>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full w-[65%] rounded-full bg-[#FDB913]"></div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-xs font-medium text-slate-400">
+                    <span>Boarding: 10:45 AM</span>
+                    <span className="text-[#FDB913]">Gate: A12</span>
+                  </div>
+                </div>
+
+                {/* Mockup Feature Card */}
+                <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/10 text-white">
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-white">Terminal Navigation</div>
+                    <div className="text-xs text-slate-400">Real-time gate and lounge maps</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      </section>
     </main>
   );
 }

@@ -15,6 +15,7 @@ import { hasPassengerSession } from './services/passengerSession';
 import { isAuthenticated } from './services/authSession';
 import RightSideChatbot from './components/RightSideChatbot.tsx';
 
+
 function RequireAuth({ children }: { children: ReactElement }) {
   const location = useLocation();
   const isSignedIn = isAuthenticated();

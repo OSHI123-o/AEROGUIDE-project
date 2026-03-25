@@ -1,5 +1,5 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import ThemeModeIcon from "../components/ThemeModeIcon";
 import Sidebar from "../components/Sidebar";
 import MapComponent from "../components/MapComponent";
@@ -22,6 +22,7 @@ function haversineMeters([lat1, lon1], [lat2, lon2]) {
 }
 
 export default function MapPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [themeMode, setThemeMode] = useState(() => (localStorage.getItem("aeroguide_theme") === "dark" ? "dark" : "light"));
   const [language, setLanguage] = useState(() => getStoredLang().toLowerCase());
@@ -36,8 +37,14 @@ export default function MapPage() {
   const [poiQuery, setPoiQuery] = useState("");
   const [activeCategories, setActiveCategories] = useState(() => new Set(ALL_POIS.map((p) => p.category)));
 
+  // Sync theme with HTML root for Tailwind Dark Mode
   useEffect(() => {
     localStorage.setItem("aeroguide_theme", themeMode);
+    if (themeMode === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
   }, [themeMode]);
 
   useEffect(() => {
@@ -169,61 +176,67 @@ export default function MapPage() {
   }, [poiQuery, activeCategories, userLocation]);
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", width: "100%", overflow: "hidden", position: "relative" }}>
-      <button
-        onClick={() => setThemeMode((p) => (p === "light" ? "dark" : "light"))}
-        aria-label={themeMode === "light" ? "Switch to dark mode" : "Switch to light mode"}
-        title={themeMode === "light" ? "Switch to dark mode" : "Switch to light mode"}
-        style={{
-          position: "absolute",
-          top: 20,
-          right: 22,
-          zIndex: 1300,
-          border: "1px solid rgba(255,255,255,0.35)",
-          borderRadius: 10,
-          width: 40,
-          height: 40,
-          background: "rgba(15,23,42,0.68)",
-          color: "#fff",
-          fontSize: 18,
-          cursor: "pointer",
-          backdropFilter: "blur(8px)",
-        }}
-      >
-        <ThemeModeIcon mode={themeMode} />
-      </button>
+    <div className="flex h-screen w-full overflow-hidden bg-slate-100 dark:bg-[#0A1A2F] text-slate-900 dark:text-white font-sans relative transition-colors duration-300">
+      
+      {/* FLOATING ACTION BAR (Top Right)
+        Contains Theme Toggle and Back Button 
+      */}
+      <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
+        <button
+          onClick={() => setThemeMode((p) => (p === "light" ? "dark" : "light"))}
+          aria-label="Toggle theme"
+          className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 dark:border-white/20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-700 dark:text-white shadow-lg hover:bg-white dark:hover:bg-slate-800 transition-all"
+        >
+          <ThemeModeIcon mode={themeMode} />
+        </button>
 
-      <Sidebar
-        onSearch={handleSearch}
-        flightData={flightData}
-        onNavigatePoi={handleNavigate}
-        onSidebarHoverChange={setDisableMapWheelZoom}
-        language={language}
-        setLanguage={setLanguage}
-        navigationSteps={navigationSteps}
-        onNavigateToGate={handleNavigateToGate}
-        pois={filteredPois}
-        poiQuery={poiQuery}
-        setPoiQuery={setPoiQuery}
-        activeCategories={activeCategories}
-        toggleCategory={toggleCategory}
-        setAllCategories={setAllCategories}
-        clearAllCategories={clearAllCategories}
-      />
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="flex h-12 items-center justify-center rounded-xl bg-aeroguide-gold px-6 text-sm font-bold text-aeroguide-navy shadow-[0_8px_20px_rgba(253,185,19,0.3)] hover:brightness-95 dark:hover:brightness-110 transition-all"
+        >
+          Dashboard
+        </button>
+      </div>
 
-      <MapComponent
-        pois={filteredPois}
-        selectedPoI={selectedPoI}
-        userLocation={userLocation}
-        routePolyline={routePolyline}
-        onNavigate={handleNavigate}
-        disableWheelZoom={disableMapWheelZoom}
-      />
+      {/* LEFT SIDEBAR
+        Given a modern panel look with a shadow to lift it off the map 
+      */}
+      <div className="z-40 h-full w-full sm:w-[400px] lg:w-[450px] shrink-0 border-r border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A1A2F]/95 backdrop-blur-xl shadow-2xl flex flex-col transition-colors duration-300">
+        <Sidebar
+          onSearch={handleSearch}
+          flightData={flightData}
+          onNavigatePoi={handleNavigate}
+          onSidebarHoverChange={setDisableMapWheelZoom}
+          language={language}
+          setLanguage={setLanguage}
+          navigationSteps={navigationSteps}
+          onNavigateToGate={handleNavigateToGate}
+          pois={filteredPois}
+          poiQuery={poiQuery}
+          setPoiQuery={setPoiQuery}
+          activeCategories={activeCategories}
+          toggleCategory={toggleCategory}
+          setAllCategories={setAllCategories}
+          clearAllCategories={clearAllCategories}
+        />
+      </div>
+
+      {/* MAP CONTAINER
+        Takes up the remaining flexible space. 
+      */}
+      <div className="relative flex-1 h-full z-10 bg-slate-200 dark:bg-[#050e1a]">
+        <MapComponent
+          pois={filteredPois}
+          selectedPoI={selectedPoI}
+          userLocation={userLocation}
+          routePolyline={routePolyline}
+          onNavigate={handleNavigate}
+          disableWheelZoom={disableMapWheelZoom}
+        />
+        
+        {/* Subtle Map Inner Shadow for depth */}
+        <div className="absolute inset-0 pointer-events-none shadow-[inset_10px_0_30px_rgba(0,0,0,0.1)] dark:shadow-[inset_10px_0_40px_rgba(0,0,0,0.4)] z-20"></div>
+      </div>
     </div>
   );
 }
-
-
-
-
-

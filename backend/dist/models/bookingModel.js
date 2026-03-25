@@ -1,4 +1,5 @@
 import { getEnvConfig } from "../config/env.js";
+import { getSupabaseAdmin } from "../config/supabase.js";
 // Replace this file with a real DB (Postgres/MySQL) in production.
 // For the project demo, we use an in-memory dataset.
 const passengers = [
@@ -126,29 +127,26 @@ function normalizeFlight(row) {
 }
 async function querySupabase(table, pnr, lastName, limit) {
     const env = getEnvConfig();
-    if (!env.useSupabase || !env.supabaseUrl || !env.supabaseAnonKey)
+    if (!env.useSupabase)
         return null;
-    const params = new URLSearchParams({
-        select: "*",
-        pnr: `eq.${pnr}`,
-        last_name: `ilike.${lastName}`,
-    });
-    if (limit)
-        params.set("limit", String(limit));
-    const url = `${env.supabaseUrl.replace(/\/+$/, "")}/rest/v1/${encodeURIComponent(table)}?${params.toString()}`;
-    const res = await fetch(url, {
-        method: "GET",
-        headers: {
-            apikey: env.supabaseAnonKey,
-            Authorization: `Bearer ${env.supabaseAnonKey}`,
-            Accept: "application/json",
-        },
-    });
-    if (!res.ok) {
-        const details = await res.text();
-        throw new Error(`Supabase query failed (${res.status}): ${details}`);
+    try {
+        const supabase = getSupabaseAdmin();
+        let query = supabase
+            .from(table)
+            .select("*")
+            .eq("pnr", pnr)
+            .ilike("last_name", lastName);
+        if (limit)
+            query = query.limit(limit);
+        const { data, error } = await query;
+        if (error) {
+            throw new Error(`Supabase query failed: ${error.message}`);
+        }
+        return data;
     }
-    return (await res.json());
+    catch {
+        return null;
+    }
 }
 export async function findPassenger(pnr, lastName) {
     const env = getEnvConfig();

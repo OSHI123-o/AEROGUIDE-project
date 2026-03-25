@@ -12,6 +12,11 @@ type SignupApiResponse = {
   session?: { access_token: string; refresh_token: string; expires_at: number };
 };
 
+type FallbackSignupResult = {
+  error?: string;
+  needsEmailConfirmation?: boolean;
+};
+
 export default function Signup() {
   const navigate = useNavigate();
   const [language, setLanguage] = useState<Language>(() => getStoredLang());
@@ -39,6 +44,41 @@ export default function Signup() {
   });
 
   const [isFormValid, setIsFormValid] = useState(false);
+
+  const storeAuthenticatedUser = (profile: { firstName: string; lastName: string }) => {
+    setStoredLang(language);
+    localStorage.setItem('aeroguide_user_email', email.trim().toLowerCase());
+    setAuthenticated(true);
+    localStorage.setItem('aeroguide_user_profile', JSON.stringify(profile));
+  };
+
+  const fallbackToSupabaseSignup = async (): Promise<FallbackSignupResult> => {
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim().toLowerCase(),
+      password,
+      options: {
+        data: {
+          first_name: firstName.trim(),
+          last_name: lastName.trim().toUpperCase(),
+        },
+      },
+    });
+
+    if (error) {
+      return { error: error.message || 'Signup failed. Please try again.' };
+    }
+
+    if (!data.session) {
+      return { needsEmailConfirmation: true };
+    }
+
+    storeAuthenticatedUser({
+      firstName: firstName.trim(),
+      lastName: lastName.trim().toUpperCase(),
+    });
+
+    return {};
+  };
 
   useEffect(() => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -85,7 +125,8 @@ export default function Signup() {
         }),
       });
 
-      const data: SignupApiResponse = await res.json();
+      const rawResponse = await res.text();
+      const data: SignupApiResponse = rawResponse ? JSON.parse(rawResponse) : { message: '' };
 
       if (!res.ok) {
         setSignupError(data.message || 'Signup failed. Please try again.');
@@ -102,20 +143,26 @@ export default function Signup() {
       }
 
       // Store user context
-      setStoredLang(language);
-      localStorage.setItem('aeroguide_user_email', email.trim().toLowerCase());
-      setAuthenticated(true);
-      localStorage.setItem(
-        'aeroguide_user_profile',
-        JSON.stringify({
-          firstName: data.user?.firstName || firstName.trim(),
-          lastName: data.user?.lastName || lastName.trim().toUpperCase(),
-        })
-      );
+      storeAuthenticatedUser({
+        firstName: data.user?.firstName || firstName.trim(),
+        lastName: data.user?.lastName || lastName.trim().toUpperCase(),
+      });
 
       navigate('/dashboard');
     } catch {
-      setSignupError('An unexpected error occurred. Please try again.');
+      const fallbackResult = await fallbackToSupabaseSignup();
+
+      if (fallbackResult.error) {
+        setSignupError(fallbackResult.error);
+        return;
+      }
+
+      if (fallbackResult.needsEmailConfirmation) {
+        setSignupError('Account created. Check your email to confirm your account, then sign in.');
+        return;
+      }
+
+      navigate('/dashboard');
     } finally {
       setIsLoading(false);
     }

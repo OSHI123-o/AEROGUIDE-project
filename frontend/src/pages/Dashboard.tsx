@@ -41,13 +41,26 @@ export default function Dashboard() {
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [nextFlight, setNextFlight] = useState<FlightLookupResult | null>(null);
   const [flightLoading, setFlightLoading] = useState(false);
+  
+  // Dashboard Session Connection States
   const [pnrInput, setPnrInput] = useState("");
   const [lastNameInput, setLastNameInput] = useState("");
   const [connectLoading, setConnectLoading] = useState(false);
   const [connectError, setConnectError] = useState("");
 
+  // Interactive Passenger Details Search States
+  const [searchPnr, setSearchPnr] = useState("");
+  const [searchLastName, setSearchLastName] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
+
   useEffect(() => {
     localStorage.setItem("aeroguide_theme", themeMode);
+    if (themeMode === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
   }, [themeMode]);
 
   useEffect(() => {
@@ -152,11 +165,7 @@ export default function Dashboard() {
     const normalizedPnr = normalizePnr(pnrInput);
     const normalizedLastName = normalizeLastName(lastNameInput);
     if (!isValidPnr(normalizedPnr)) {
-      setConnectError("PNR must be 5-8 letters or numbers (example: AG1234).");
-      return;
-    }
-    if (!isValidLastName(normalizedLastName)) {
-      setConnectError("Enter a valid last name using letters only.");
+      setConnectError("PNR must be 5-8 letters or numbers.");
       return;
     }
 
@@ -177,273 +186,117 @@ export default function Dashboard() {
     }
   }
 
-  const passengerState = isSignedIn ? "Returning" : "New User";
-  const dark = themeMode === "dark";
-  const PRIMARY = dark ? "#3b82f6" : "#2563eb";
-  const theme = dark
-    ? {
-        bg: "#020817",
-        text: "#e2e8f0",
-        muted: "#93a4bf",
-        panel: "#0b172d",
-        border: "#1e3355",
-        borderSoft: "#2b4369",
-        hoverBorder: "#3b82f6",
-        sidebarShadow: "0 10px 30px rgba(0, 0, 0, 0.35)",
-        cardShadow: "0 12px 28px rgba(0, 0, 0, 0.3)",
-        secondaryBg: "#0f1f3a",
-        secondaryText: "#dbe6f8",
-        inputBg: "#071428",
-        inputText: "#e2e8f0",
-        timelineBg: "#0c1d36",
-        statDivider: "#1f3658",
-        heroOverlay: "rgba(7,18,40,0.62)",
+  // UPDATED: Now redirects to the Boarding Pass (/journey) page
+  async function handlePassengerSearch(e: FormEvent) {
+    e.preventDefault();
+    setSearchError("");
+
+    const normalizedPnr = normalizePnr(searchPnr);
+    const normalizedLastName = normalizeLastName(searchLastName);
+
+    if (!isValidPnr(normalizedPnr)) {
+      setSearchError("Please enter a valid PNR (5-8 characters).");
+      return;
+    }
+    if (!isValidLastName(normalizedLastName)) {
+      setSearchError("Please enter a valid last name.");
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const flights = await lookupFlightsByPnr(normalizedPnr, normalizedLastName);
+      const sorted = [...flights].sort((a, b) => new Date(a.departureIso).getTime() - new Date(b.departureIso).getTime());
+      
+      if (sorted.length > 0) {
+        // Save the flight to local storage so the boarding pass page can read it
+        localStorage.setItem("aeroguide_active_flight", JSON.stringify(sorted[0]));
+        // Navigate to your boarding pass page
+        navigate("/journey"); 
+      } else {
+        setSearchError("No active flights found for this passenger.");
       }
-    : {
-        bg: "#f4f6fb",
-        text: "#0f172a",
-        muted: "#64748b",
-        panel: "#ffffff",
-        border: "#e7ecf4",
-        borderSoft: "#dbe3f0",
-        hoverBorder: "#c7d6f4",
-        sidebarShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-        cardShadow: "0 12px 28px rgba(15, 23, 42, 0.06)",
-        secondaryBg: "#ffffff",
-        secondaryText: "#1e293b",
-        inputBg: "#ffffff",
-        inputText: "#0f172a",
-        timelineBg: "#f8fbff",
-        statDivider: "#edf1f8",
-        heroOverlay: "rgba(7,18,40,0.42)",
-      };
+    } catch (err) {
+      setSearchError("Could not retrieve passenger details. Check your PNR.");
+    } finally {
+      setIsSearching(false);
+    }
+  }
+
+  const passengerState = isSignedIn ? "Returning" : "New User";
 
   return (
-    <div style={{ minHeight: "100vh", background: theme.bg, color: theme.text }}>
-      <style>{`
-        .ag-layout {
-          max-width: 1440px;
-          margin: 0 auto;
-          padding: 22px;
-          display: grid;
-          grid-template-columns: 250px 1fr;
-          gap: 18px;
-        }
-        .ag-sidebar {
-          background: ${theme.panel};
-          border: 1px solid ${theme.border};
-          border-radius: 24px;
-          padding: 18px;
-          box-shadow: ${theme.sidebarShadow};
-          height: calc(100vh - 44px);
-          position: sticky;
-          top: 22px;
-        }
-        .ag-nav-btn {
-          width: 100%;
-          text-align: left;
-          border: 1px solid ${theme.border};
-          background: ${theme.panel};
-          color: ${theme.text};
-          border-radius: 12px;
-          padding: 11px 12px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all .2s ease;
-        }
-        .ag-nav-btn:hover {
-          border-color: ${theme.hoverBorder};
-          transform: translateY(-1px);
-          box-shadow: 0 6px 14px rgba(37, 99, 235, 0.12);
-        }
-        .ag-main {
-          display: grid;
-          gap: 16px;
-          padding-bottom: 26px;
-        }
-        .ag-card {
-          background: ${theme.panel};
-          border: 1px solid ${theme.border};
-          border-radius: 22px;
-          box-shadow: ${theme.cardShadow};
-        }
-        .ag-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 12px;
-          padding: 18px;
-        }
-        .ag-primary {
-          border: 0;
-          border-radius: 12px;
-          padding: 10px 14px;
-          font-weight: 700;
-          background: ${PRIMARY};
-          color: #ffffff;
-          cursor: pointer;
-          box-shadow: 0 10px 18px rgba(37, 99, 235, 0.26);
-          transition: transform .2s ease, filter .2s ease;
-        }
-        .ag-primary:hover { transform: translateY(-1px); filter: brightness(1.04); }
-        .ag-secondary {
-          border: 1px solid ${theme.borderSoft};
-          border-radius: 12px;
-          padding: 10px 14px;
-          font-weight: 700;
-          background: ${theme.secondaryBg};
-          color: ${theme.secondaryText};
-          cursor: pointer;
-        }
-        .ag-hero {
-          position: relative;
-          overflow: visible;
-          border-radius: 22px;
-          width: 100%;
-          min-width: 0;
-        }
-        .ag-hero-image {
-          border-radius: 22px;
-          overflow: hidden;
-          aspect-ratio: 1.91 / 1;
-          min-height: 0;
-          position: relative;
-          border: 1px solid ${theme.border};
-        }
-        .ag-hero-image img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          display: block;
-        }
-        .ag-hero-image::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(180deg, rgba(7,18,40,0.10), ${theme.heroOverlay});
-        }
-        .ag-hero-text {
-          position: absolute;
-          left: 20px;
-          top: 18px;
-          z-index: 2;
-          color: #ffffff;
-          text-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-        .ag-overlap {
-          position: absolute;
-          left: 22px;
-          right: 22px;
-          bottom: -38px;
-          z-index: 3;
-          background: ${theme.panel};
-          border: 1px solid ${theme.border};
-          border-radius: 18px;
-          box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 0;
-          overflow: hidden;
-        }
-        .ag-stat {
-          padding: 14px 16px;
-          border-right: 1px solid ${theme.statDivider};
-        }
-        .ag-stat:last-child { border-right: 0; }
-        .ag-grid {
-          margin-top: 46px;
-          display: grid;
-          grid-template-columns: 1.25fr 1fr;
-          gap: 14px;
-        }
-        .ag-subgrid {
-          display: grid;
-          gap: 14px;
-        }
-        .ag-progress-wrap {
-          margin-top: 8px;
-          display: grid;
-          gap: 10px;
-        }
-        .ag-progress {
-          height: 9px;
-          border-radius: 999px;
-          background: ${dark ? "#1d3558" : "#e8eef9"};
-          overflow: hidden;
-        }
-        .ag-progress > span {
-          display: block;
-          height: 100%;
-          background: ${PRIMARY};
-          border-radius: 999px;
-        }
-        .ag-input {
-          width: 100%;
-          border-radius: 12px;
-          border: 1px solid ${theme.borderSoft};
-          padding: 10px 12px;
-          outline: none;
-          font-weight: 600;
-          color: ${theme.inputText};
-          background: ${theme.inputBg};
-        }
-        .ag-input:focus {
-          border-color: #93b2ef;
-          box-shadow: 0 0 0 3px rgba(37,99,235,0.13);
-        }
-        @media (max-width: 1140px) {
-          .ag-layout { grid-template-columns: 1fr; }
-          .ag-sidebar { position: static; height: auto; }
-          .ag-overlap { position: static; margin-top: 10px; }
-          .ag-grid { margin-top: 0; grid-template-columns: 1fr; }
-        }
-        @media (max-width: 760px) {
-          .ag-overlap { grid-template-columns: 1fr; }
-          .ag-stat { border-right: 0; border-bottom: 1px solid #edf1f8; }
-          .ag-stat:last-child { border-bottom: 0; }
-        }
-      `}</style>
+    <div className="min-h-screen bg-slate-50 dark:bg-aeroguide-navy text-slate-900 dark:text-white font-sans selection:bg-aeroguide-gold selection:text-aeroguide-navy relative overflow-hidden flex flex-col lg:flex-row transition-colors duration-300">
+      
+      {/* Abstract Background Elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+        <div className="absolute -top-[20%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-aeroguide-blue opacity-10 dark:opacity-30 blur-[120px]"></div>
+        <div className="absolute top-[60%] -right-[10%] w-[40vw] h-[40vw] rounded-full bg-aeroguide-gold opacity-10 dark:opacity-20 blur-[100px]"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.03)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px]"></div>
+      </div>
 
-      <div className="ag-layout">
-        <aside className="ag-sidebar">
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 12, background: PRIMARY, color: "#fff", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>A</div>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 0.3 }}>AEROGUIDE</div>
-              <div style={{ fontSize: 12, color: theme.muted }}>Passenger Navigation</div>
-            </div>
+      {/* SIDEBAR */}
+      <aside className="relative z-10 w-full lg:w-72 lg:h-screen lg:sticky top-0 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 backdrop-blur-xl p-6 transition-colors duration-300">
+        <div className="flex items-center gap-3 mb-10">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-aeroguide-gold shadow-lg shadow-aeroguide-gold/20">
+            <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6 text-aeroguide-navy" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 2L11 13" />
+              <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+            </svg>
           </div>
-          <div style={{ display: "grid", gap: 8 }}>
-            <button className="ag-nav-btn" onClick={() => navigate("/overview")}>Overview</button>
-            <button className="ag-nav-btn" onClick={() => navigate("/flights")}>Flights</button>
-            <button className="ag-nav-btn" onClick={() => navigate("/map")}>Map</button>
-            <button className="ag-nav-btn" onClick={() => navigate("/guide")}>Assistant</button>
-            <button className="ag-nav-btn" onClick={() => navigate("/settings")}>Settings</button>
+          <div>
+            <div className="text-xl font-black tracking-widest text-slate-900 dark:text-white">AEROGUIDE</div>
+            <div className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400">Passenger Nav</div>
           </div>
-        </aside>
+        </div>
 
-        <main className="ag-main">
-          <header className="ag-card ag-header">
+        <nav className="flex flex-col gap-2 flex-1">
+          {['Overview', 'Flights', 'Map', 'Assistant', 'Settings'].map((item) => (
+            <button
+              key={item}
+              onClick={() => navigate(`/${item.toLowerCase()}`)}
+              className={`w-full text-left rounded-xl px-4 py-3 font-semibold text-sm transition-all border ${
+                item === 'Overview' 
+                  ? 'bg-aeroguide-blue/10 dark:bg-aeroguide-blue/30 border-aeroguide-blue/30 dark:border-aeroguide-blue/50 text-aeroguide-blue dark:text-white' 
+                  : 'border-transparent text-slate-600 dark:text-slate-300 hover:border-slate-300 hover:bg-white/50 dark:hover:border-white/10 dark:hover:bg-white/10'
+              }`}
+            >
+              {item}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      {/* MAIN CONTENT */}
+      <main className="relative z-10 flex-1 p-4 sm:p-8 lg:p-10 h-full lg:h-screen overflow-y-auto">
+        <div className="max-w-6xl mx-auto space-y-8">
+          
+          {/* HEADER */}
+          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-6 backdrop-blur-md shadow-xl transition-colors duration-300">
             <div>
-              <h1 style={{ margin: 0, fontSize: 30, letterSpacing: 0.2 }}>AEROGUIDE Dashboard</h1>
-              <div style={{ marginTop: 4, color: theme.muted, fontSize: 13 }}>
-                {BIA_INFO.name} ({BIA_INFO.iata}) • {BIA_INFO.location} • {BIA_INFO.flightInfo}
+              <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Dashboard</h1>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <span className="text-aeroguide-blue dark:text-aeroguide-gold font-bold">{BIA_INFO.iata}</span>
+                <span>•</span>
+                <span>{BIA_INFO.name}</span>
               </div>
-              <div style={{ marginTop: 3, color: theme.muted, fontSize: 12 }}>
+              <div className="mt-1 text-xs text-slate-500">
                 {now.toLocaleString([], { weekday: "short", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            
+            <div className="flex items-center gap-3">
               <button
-                className="ag-secondary"
+                className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-colors shadow-sm dark:shadow-none"
                 onClick={() => setThemeMode((p) => (p === "light" ? "dark" : "light"))}
-                aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label="Toggle theme"
               >
                 <ThemeModeIcon mode={themeMode} />
               </button>
+              
               {isSignedIn ? (
                 <button
-                  className="ag-primary"
+                  className="rounded-xl bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 px-5 py-3 text-sm font-bold text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/20 transition-all shadow-sm dark:shadow-none"
                   onClick={() => {
                     setAuthenticated(false);
                     localStorage.removeItem("aeroguide_user_email");
@@ -453,112 +306,158 @@ export default function Dashboard() {
                     setConnectedPassenger(null);
                   }}
                 >
-                  Sign out
+                  Sign Out
                 </button>
               ) : (
-                <button className="ag-primary" onClick={() => navigate("/login?next=%2Fdashboard")}>Sign in</button>
+                <button 
+                  className="rounded-xl bg-aeroguide-gold px-6 py-3 text-sm font-bold text-aeroguide-navy shadow-[0_4px_14px_rgba(253,185,19,0.3)] hover:brightness-95 dark:hover:brightness-110 transition-all"
+                  onClick={() => navigate("/login?next=%2Fdashboard")}
+                >
+                  Sign In
+                </button>
               )}
             </div>
           </header>
 
-          <section className="ag-hero">
-            <div className="ag-hero-image">
+          {/* HERO SECTION */}
+          <section className="relative w-full rounded-[32px] overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-900 shadow-xl transition-colors duration-300">
+            <div className="absolute inset-0">
               <img
                 src="https://images.unsplash.com/photo-1540339832862-474599807836?q=80&w=2000&auto=format&fit=crop"
-                alt="Airplane wing above clouds"
-                loading="lazy"
+                alt="Airplane wing"
+                className="w-full h-full object-cover opacity-90 dark:opacity-100"
               />
-              <div className="ag-hero-text">
-                <div style={{ fontSize: 22, fontWeight: 900 }}>Smooth Passenger Experience</div>
-                <div style={{ marginTop: 4, fontSize: 14, opacity: 0.92 }}>Navigate CMB confidently from check-in to gate.</div>
-              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-aeroguide-navy via-aeroguide-navy/60 to-transparent"></div>
             </div>
 
-            <div className="ag-overlap">
-              <div className="ag-stat">
-                <div style={{ fontSize: 12, color: theme.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Live Weather</div>
-                <div style={{ marginTop: 6, fontSize: 30, fontWeight: 900 }}>{weatherLoading ? "..." : `${weather?.temperature ?? 30} C`}</div>
-                <div style={{ marginTop: 2, fontSize: 12, color: theme.muted }}>Wind {weather?.wind ?? 14} km/h</div>
+            <div className="relative z-10 pt-32 pb-8 px-8 lg:px-12 flex flex-col lg:flex-row justify-between items-end gap-8">
+              <div className="w-full lg:w-auto">
+                <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight">
+                  Smooth Passenger <br/> <span className="text-aeroguide-gold">Experience.</span>
+                </h2>
+                <p className="mt-2 text-sm text-slate-200">Navigate CMB confidently from check-in to gate.</p>
               </div>
-              <div className="ag-stat">
-                <div style={{ fontSize: 12, color: theme.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Gate Navigation</div>
-                <div style={{ marginTop: 6, fontSize: 30, fontWeight: 900 }}>{flightLoading ? "..." : nextFlight?.gate ?? "--"}</div>
-                <button className="ag-primary" style={{ marginTop: 8 }} onClick={() => navigate(`/map?gate=${encodeURIComponent(nextFlight?.gate ?? "A12")}`)}>Open Map</button>
-              </div>
-              <div className="ag-stat">
-                <div style={{ fontSize: 12, color: theme.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Passenger State</div>
-                <div style={{ marginTop: 6, fontSize: 30, fontWeight: 900 }}>{passengerState}</div>
-                <div style={{ marginTop: 2, fontSize: 12, color: theme.muted }}>{isSignedIn ? "Signed in" : "Please sign in"}</div>
+
+              {/* OVERLAPPING STATS */}
+              <div className="w-full lg:w-auto flex flex-col sm:flex-row gap-4">
+                <div className="flex-1 min-w-[140px] rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur-xl">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-aeroguide-gold">Live Weather</div>
+                  <div className="mt-1 text-2xl font-black text-white">{weatherLoading ? "..." : `${weather?.temperature ?? 30}°C`}</div>
+                  <div className="text-xs text-slate-300">Wind {weather?.wind ?? 14} km/h</div>
+                </div>
+
+                <div className="flex-1 min-w-[140px] rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur-xl">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-aeroguide-gold">Gate Nav</div>
+                  <div className="mt-1 text-2xl font-black text-white">{flightLoading ? "..." : nextFlight?.gate ?? "--"}</div>
+                  <button onClick={() => navigate(`/map?gate=${encodeURIComponent(nextFlight?.gate ?? "A12")}`)} className="mt-1 text-xs font-bold text-blue-300 hover:text-white transition-colors">Open Map →</button>
+                </div>
+
+                <div className="flex-1 min-w-[140px] rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur-xl">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-aeroguide-gold">Status</div>
+                  <div className="mt-1 text-2xl font-black text-white">{passengerState}</div>
+                  <div className="text-xs text-slate-300">{isSignedIn ? "Signed in" : "Please sign in"}</div>
+                </div>
               </div>
             </div>
           </section>
 
-          <section className="ag-grid">
-            <div className="ag-subgrid">
-              <article className="ag-card" style={{ padding: 16 }}>
-                <h3 style={{ margin: 0, fontSize: 22 }}>Quick Actions</h3>
-                <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <button className="ag-primary" onClick={() => navigate("/flights")}>View Flights</button>
-                  <button className="ag-primary" onClick={() => navigate("/my-home")}>Open My Homepage</button>
-                  <button className="ag-secondary" onClick={() => navigate("/guide")}>Start Assistant</button>
-                  <button className="ag-secondary" onClick={() => navigate(nextFlight?.gate ? `/map?gate=${encodeURIComponent(nextFlight.gate)}` : "/journey")}>
+          {/* MAIN GRID */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            
+            {/* LEFT COLUMN */}
+            <div className="lg:col-span-3 space-y-6">
+              
+              {/* Quick Actions */}
+              <article className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-6 backdrop-blur-md shadow-lg dark:shadow-none transition-colors duration-300">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-5">Quick Actions</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button onClick={() => navigate("/flights")} className="rounded-xl bg-aeroguide-blue px-4 py-3 text-sm font-bold text-white hover:brightness-110 shadow-md transition-all">
+                    View Flights
+                  </button>
+                  <button onClick={() => navigate("/my-home")} className="rounded-xl bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 px-4 py-3 text-sm font-bold text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/20 shadow-sm dark:shadow-none transition-colors">
+                    Open My Homepage
+                  </button>
+                  <button onClick={() => navigate("/guide")} className="rounded-xl bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 px-4 py-3 text-sm font-bold text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/20 shadow-sm dark:shadow-none transition-colors">
+                    Start Assistant
+                  </button>
+                  <button onClick={() => navigate(nextFlight?.gate ? `/map?gate=${encodeURIComponent(nextFlight.gate)}` : "/journey")} className="rounded-xl bg-aeroguide-gold px-4 py-3 text-sm font-bold text-aeroguide-navy hover:brightness-95 dark:hover:brightness-110 shadow-md shadow-aeroguide-gold/20 transition-all">
                     {nextFlight?.gate ? `Find Gate ${nextFlight.gate}` : "Open Journey Page"}
                   </button>
                 </div>
               </article>
 
-              <article className="ag-card" style={{ padding: 16 }}>
-                <h3 style={{ margin: 0, fontSize: 22 }}>Passenger Flow Modes</h3>
-                <div className="ag-progress-wrap">
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span>Departing</span><strong>72%</strong></div>
-                    <div className="ag-progress"><span style={{ width: "72%" }} /></div>
-                  </div>
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span>Arriving</span><strong>56%</strong></div>
-                    <div className="ag-progress"><span style={{ width: "56%" }} /></div>
-                  </div>
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span>Transit</span><strong>38%</strong></div>
-                    <div className="ag-progress"><span style={{ width: "38%" }} /></div>
-                  </div>
-                </div>
+              {/* NEW FEATURE: Passenger Details Lookup */}
+              <article className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-6 backdrop-blur-md shadow-lg dark:shadow-none transition-colors duration-300 overflow-hidden relative">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Track Passenger Details</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">Search any valid PNR to view your digital boarding pass and live navigation.</p>
+                
+                <form onSubmit={handlePassengerSearch} className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    className="flex-1 rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-aeroguide-blue dark:focus:border-aeroguide-gold focus:ring-2 focus:ring-aeroguide-blue/10 dark:focus:ring-0 transition-colors"
+                    value={searchPnr}
+                    onChange={(e) => setSearchPnr(e.target.value.toUpperCase())}
+                    placeholder="PNR (e.g. AG1234)"
+                    maxLength={8}
+                  />
+                  <input
+                    className="flex-1 rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-aeroguide-blue dark:focus:border-aeroguide-gold focus:ring-2 focus:ring-aeroguide-blue/10 dark:focus:ring-0 transition-colors"
+                    value={searchLastName}
+                    onChange={(e) => setSearchLastName(e.target.value.toUpperCase())}
+                    placeholder="Last name"
+                    maxLength={30}
+                  />
+                  <button 
+                    className="rounded-xl bg-slate-900 dark:bg-white px-6 py-3 text-sm font-bold text-white dark:text-slate-900 hover:opacity-90 transition-opacity whitespace-nowrap" 
+                    type="submit" 
+                    disabled={isSearching}
+                  >
+                    {isSearching ? "Searching..." : "Track Flight"}
+                  </button>
+                </form>
+                {searchError && <div className="mt-3 text-xs text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-500/10 p-2 rounded-lg">{searchError}</div>}
               </article>
             </div>
 
-            <div className="ag-subgrid">
-              <article className="ag-card" style={{ padding: 16 }}>
-                <h3 style={{ margin: 0, fontSize: 22 }}>Operations Timeline</h3>
-                <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            {/* RIGHT COLUMN */}
+            <div className="lg:col-span-2 space-y-6">
+              
+              {/* Timeline */}
+              <article className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-6 backdrop-blur-md shadow-lg dark:shadow-none transition-colors duration-300">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-5">Operations</h3>
+                <div className="space-y-3">
                   {[
                     "Check-in counters active",
                     "Security wait time under 12 min",
                     `Gate ${nextFlight?.gate ?? "--"} boarding window stable`,
                     `Next flight ${nextFlight?.flightNo ?? "--"} ready for guidance`,
-                  ].map((item) => (
-                    <div key={item} style={{ border: `1px solid ${theme.border}`, borderRadius: 12, padding: "10px 12px", background: theme.timelineBg, fontSize: 14 }}>
-                      {item}
+                  ].map((item, i) => (
+                    <div key={i} className="rounded-xl border border-slate-200 dark:border-white/5 bg-white/80 dark:bg-white/5 p-3 text-sm text-slate-700 dark:text-slate-300 font-medium shadow-sm dark:shadow-none">
+                      <span className="text-aeroguide-blue dark:text-aeroguide-gold mr-2">•</span> {item}
                     </div>
                   ))}
                 </div>
               </article>
 
-              <article className="ag-card" style={{ padding: 16 }}>
-                <h3 style={{ margin: 0, fontSize: 22 }}>My Booking Access</h3>
-                <p style={{ margin: "6px 0 0", fontSize: 13, color: theme.muted }}>Search key: PNR + last name</p>
+              {/* Booking Access */}
+              <article className="rounded-[24px] border border-blue-200 dark:border-aeroguide-gold/20 bg-gradient-to-br from-blue-50 to-white dark:from-white/5 dark:to-aeroguide-blue/10 p-6 backdrop-blur-md shadow-lg dark:shadow-none transition-colors duration-300">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">My Booking Access</h3>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 mb-5">Connect a session to enable global tracking.</p>
+                
                 {!isSignedIn ? (
-                  <div style={{ marginTop: 10 }}>
-                    <button className="ag-primary" onClick={() => navigate("/login?next=%2Fdashboard")}>Sign in to Continue</button>
-                  </div>
+                  <button className="w-full rounded-xl bg-aeroguide-gold px-4 py-3 text-sm font-bold text-aeroguide-navy hover:brightness-95 dark:hover:brightness-110 shadow-md shadow-aeroguide-gold/20 transition-all" onClick={() => navigate("/login?next=%2Fdashboard")}>
+                    Sign in to Continue
+                  </button>
                 ) : connectedPassenger ? (
-                  <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                    <div style={{ border: `1px solid ${theme.border}`, borderRadius: 12, padding: 12, background: theme.timelineBg }}>
-                      <div style={{ fontSize: 12, color: theme.muted }}>Connected booking</div>
-                      <div style={{ marginTop: 2, fontWeight: 800 }}>{connectedPassenger.pnr} / {connectedPassenger.lastName}</div>
+                  <div className="space-y-3">
+                    <div className="rounded-xl border border-blue-200 dark:border-white/10 bg-white dark:bg-white/5 p-4 shadow-sm dark:shadow-none">
+                      <div className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400">Connected</div>
+                      <div className="mt-1 text-lg font-black text-slate-900 dark:text-white">{connectedPassenger.pnr} / {connectedPassenger.lastName}</div>
                     </div>
-                    <button className="ag-primary" onClick={() => navigate("/my-home")}>Open My Homepage</button>
+                    <button className="w-full rounded-xl bg-aeroguide-blue px-4 py-3 text-sm font-bold text-white hover:brightness-110 shadow-md transition-all" onClick={() => navigate("/my-home")}>
+                      Open My Homepage
+                    </button>
                     <button
-                      className="ag-secondary"
+                      className="w-full rounded-xl border border-slate-300 dark:border-white/10 bg-transparent px-4 py-3 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
                       onClick={() => {
                         clearPassengerSession();
                         setConnectedPassenger(null);
@@ -569,24 +468,33 @@ export default function Dashboard() {
                     </button>
                   </div>
                 ) : (
-                  <form onSubmit={handleConnectPassenger} style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                    <input className="ag-input" value={pnrInput} onChange={(e) => setPnrInput(e.target.value.toUpperCase())} placeholder="PNR (e.g. AG1234)" maxLength={8} />
-                    <input className="ag-input" value={lastNameInput} onChange={(e) => setLastNameInput(e.target.value.toUpperCase())} placeholder="Last name (e.g. PERERA)" maxLength={30} />
-                    {connectError ? <div style={{ fontSize: 12, color: "#b91c1c" }}>{connectError}</div> : null}
-                    <button className="ag-primary" type="submit" disabled={connectLoading}>{connectLoading ? "Checking..." : "Open My Homepage"}</button>
-                    <div style={{ fontSize: 11, color: theme.muted }}>Any valid PNR + last name is accepted.</div>
+                  <form onSubmit={handleConnectPassenger} className="space-y-3">
+                    <input
+                      className="w-full rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-aeroguide-blue dark:focus:border-aeroguide-gold focus:ring-2 focus:ring-aeroguide-blue/10 dark:focus:ring-0 transition-colors"
+                      value={pnrInput}
+                      onChange={(e) => setPnrInput(e.target.value.toUpperCase())}
+                      placeholder="PNR (e.g. AG1234)"
+                      maxLength={8}
+                    />
+                    <input
+                      className="w-full rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-aeroguide-blue dark:focus:border-aeroguide-gold focus:ring-2 focus:ring-aeroguide-blue/10 dark:focus:ring-0 transition-colors"
+                      value={lastNameInput}
+                      onChange={(e) => setLastNameInput(e.target.value.toUpperCase())}
+                      placeholder="Last name"
+                      maxLength={30}
+                    />
+                    {connectError && <div className="text-xs text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-500/10 p-2 rounded-lg">{connectError}</div>}
+                    <button className="w-full rounded-xl bg-aeroguide-gold px-4 py-3 text-sm font-bold text-aeroguide-navy hover:brightness-95 dark:hover:brightness-110 shadow-md shadow-aeroguide-gold/20 transition-all" type="submit" disabled={connectLoading}>
+                      {connectLoading ? "Connecting..." : "Connect Passenger Session"}
+                    </button>
                   </form>
                 )}
               </article>
             </div>
-          </section>
-        </main>
-      </div>
+
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
-
-
-
-
-

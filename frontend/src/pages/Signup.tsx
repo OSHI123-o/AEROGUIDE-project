@@ -16,6 +16,8 @@ type FallbackSignupResult = {
   error?: string;
   needsEmailConfirmation?: boolean;
 };
+const GENERIC_SIGNUP_ERROR =
+  'Signup failed. Check that the backend or Supabase connection is available.';
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -53,31 +55,35 @@ export default function Signup() {
   };
 
   const fallbackToSupabaseSignup = async (): Promise<FallbackSignupResult> => {
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim().toLowerCase(),
-      password,
-      options: {
-        data: {
-          first_name: firstName.trim(),
-          last_name: lastName.trim().toUpperCase(),
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+        options: {
+          data: {
+            first_name: firstName.trim(),
+            last_name: lastName.trim().toUpperCase(),
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
-      return { error: error.message || 'Signup failed. Please try again.' };
+      if (error) {
+        return { error: error.message || GENERIC_SIGNUP_ERROR };
+      }
+
+      if (!data.session) {
+        return { needsEmailConfirmation: true };
+      }
+
+      storeAuthenticatedUser({
+        firstName: firstName.trim(),
+        lastName: lastName.trim().toUpperCase(),
+      });
+
+      return {};
+    } catch {
+      return { error: GENERIC_SIGNUP_ERROR };
     }
-
-    if (!data.session) {
-      return { needsEmailConfirmation: true };
-    }
-
-    storeAuthenticatedUser({
-      firstName: firstName.trim(),
-      lastName: lastName.trim().toUpperCase(),
-    });
-
-    return {};
   };
 
   useEffect(() => {
@@ -112,57 +118,66 @@ export default function Signup() {
     setSignupError('');
 
     try {
-      // Call the backend API which uses admin.createUser() —
-      // auto-confirms users without sending email (no rate limit)
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          password,
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-        }),
-      });
+      const normalizedEmail = email.trim().toLowerCase();
 
-      const rawResponse = await res.text();
-      const data: SignupApiResponse = rawResponse ? JSON.parse(rawResponse) : { message: '' };
-
-      if (!res.ok) {
-        setSignupError(data.message || 'Signup failed. Please try again.');
-        setIsLoading(false);
-        return;
-      }
-
-      // If the backend returned a session, set it in the Supabase client
-      if (data.session?.access_token && data.session?.refresh_token) {
-        await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
+      try {
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: normalizedEmail,
+            password,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+          }),
         });
-      }
 
-      // Store user context
-      storeAuthenticatedUser({
-        firstName: data.user?.firstName || firstName.trim(),
-        lastName: data.user?.lastName || lastName.trim().toUpperCase(),
-      });
+        let data: SignupApiResponse | null = null;
+        try {
+          data = (await res.json()) as SignupApiResponse;
+        } catch {
+          data = null;
+        }
 
-      navigate('/dashboard');
-    } catch {
-      const fallbackResult = await fallbackToSupabaseSignup();
+        if (!res.ok) {
+          setSignupError(data?.message || 'Signup failed. Please try again.');
+          return;
+        }
 
-      if (fallbackResult.error) {
-        setSignupError(fallbackResult.error);
+        if (data?.session?.access_token && data.session.refresh_token) {
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+        }
+
+        storeAuthenticatedUser({
+          firstName: data?.user?.firstName || firstName.trim(),
+          lastName: data?.user?.lastName || lastName.trim().toUpperCase(),
+        });
+
+        navigate('/dashboard');
+        return;
+      } catch {
+        const fallbackResult = await fallbackToSupabaseSignup();
+
+        if (fallbackResult.error) {
+          setSignupError(fallbackResult.error);
+          return;
+        }
+
+        if (fallbackResult.needsEmailConfirmation) {
+          setSignupError('Account created. Check your email to confirm your account, then sign in.');
+          return;
+        }
+
+        navigate('/dashboard');
         return;
       }
-
-      if (fallbackResult.needsEmailConfirmation) {
-        setSignupError('Account created. Check your email to confirm your account, then sign in.');
-        return;
-      }
-
-      navigate('/dashboard');
+    } catch (error) {
+      setSignupError(
+        error instanceof Error && error.message ? error.message : GENERIC_SIGNUP_ERROR
+      );
     } finally {
       setIsLoading(false);
     }

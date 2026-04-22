@@ -65,3 +65,21 @@ export async function flightLookup(req: Request, res: Response) {
     });
   }
 }
+
+export async function passengerSuggest(req: Request, res: Response) {
+  const query = (req.query.q as string || "").trim().toUpperCase();
+  if (query.length < 2) {
+    return res.json([]);
+  }
+
+  try {
+    const { suggestPassengers } = await import("../models/bookingModel.js");
+    const suggestions = await suggestPassengers(query);
+    return res.json(suggestions);
+  } catch (error) {
+    return res.status(500).json({
+      message: "Suggestion lookup failed.",
+      details: error instanceof Error ? error.message : "Unexpected error",
+    });
+  }
+}

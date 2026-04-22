@@ -121,7 +121,7 @@ export default function SettingsPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: themeColors.bg, padding: 20 }}>
-      <div style={{ maxWidth: 980, margin: "0 auto", display: "grid", gap: 14 }}>
+      <div style={{ width: "100%", display: "grid", gap: 14 }}>
         <header style={{ ...card, background: themeColors.panel, borderColor: themeColors.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h1 style={{ margin: 0, color: themeColors.text }}>{copy.settings}</h1>

@@ -1,16 +1,14 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ThemeModeIcon from "../components/ThemeModeIcon";
 
 const CMB_BBOX = {
-  // Tight bounding box around Bandaranaike International Airport area.
   lamin: 6.95,
   lamax: 7.45,
   lomin: 79.72,
   lomax: 80.1,
 };
 
-// Significantly upgraded realistic fallback data for CMB
 const REALISTIC_FALLBACK_FLIGHTS = [
   { id: "UL225", callsign: "UL225", operator: "SriLankan Airlines", status: "Approaching", speedKmh: 420, altitudeM: 1200, heading: "185°", routeHint: "DXB -> CMB", isLive: false },
   { id: "EK648", callsign: "EK648", operator: "Emirates", status: "Airborne", speedKmh: 850, altitudeM: 10500, heading: "110°", routeHint: "DXB -> CMB", isLive: false },
@@ -19,6 +17,35 @@ const REALISTIC_FALLBACK_FLIGHTS = [
   { id: "UL303", callsign: "UL303", operator: "SriLankan Airlines", status: "Airborne", speedKmh: 780, altitudeM: 9200, heading: "295°", routeHint: "SIN -> CMB", isLive: false },
   { id: "FZ555", callsign: "FZ555", operator: "flydubai", status: "On Ground", speedKmh: 0, altitudeM: 9, heading: "-", routeHint: "DXB -> CMB", isLive: false },
 ];
+
+type FlightCardModel = {
+  id: string;
+  callsign: string;
+  operator: string;
+  status: string;
+  speedKmh: number;
+  altitudeM: number;
+  heading: string;
+  routeHint: string;
+  isLive: boolean;
+};
+
+const AIRLINE_STYLE: Record<string, { code: string; logoBg: string; logoText: string; stripe: string }> = {
+  "Singapore Airlines": { code: "SQ", logoBg: "#0b3a82", logoText: "#f6d47a", stripe: "linear-gradient(135deg, #ffe0a8, #fff8eb)" },
+  Emirates: { code: "EK", logoBg: "#c41f2d", logoText: "#ffffff", stripe: "linear-gradient(135deg, #ffd7dc, #fff3f4)" },
+  "Qatar Airways": { code: "QR", logoBg: "#7a163d", logoText: "#ffffff", stripe: "linear-gradient(135deg, #f4dce7, #fff5f8)" },
+  "SriLankan Airlines": { code: "UL", logoBg: "#0b4a8f", logoText: "#fdb913", stripe: "linear-gradient(135deg, #d7e8ff, #fff4d8)" },
+  flydubai: { code: "FZ", logoBg: "#0f766e", logoText: "#ffffff", stripe: "linear-gradient(135deg, #d7f6f2, #fff0df)" },
+  Unknown: { code: "FL", logoBg: "#334155", logoText: "#ffffff", stripe: "linear-gradient(135deg, #e8ecf4, #ffffff)" },
+};
+
+const AIRPORT_META: Record<string, { city: string; country: string; badgeBg: string; badgeAccent: string }> = {
+  CMB: { city: "Colombo", country: "Sri Lanka", badgeBg: "#e0ecff", badgeAccent: "#0b4a8f" },
+  DXB: { city: "Dubai", country: "UAE", badgeBg: "#ffe7e7", badgeAccent: "#c41f2d" },
+  DOH: { city: "Doha", country: "Qatar", badgeBg: "#f8dce8", badgeAccent: "#7a163d" },
+  SIN: { city: "Singapore", country: "Singapore", badgeBg: "#fff1d9", badgeAccent: "#9a6700" },
+  Unknown: { city: "Airport", country: "Route", badgeBg: "#eef2f7", badgeAccent: "#475569" },
+};
 
 function toKmh(ms: number | unknown) {
   if (typeof ms !== "number") return 0;
@@ -46,14 +73,53 @@ function normalizeCallsign(value: string | unknown) {
   return raw || "UNKNOWN";
 }
 
+function parseRoute(routeHint: string) {
+  const [from = "CMB", to = "CMB"] = routeHint.split("->").map((part) => part.trim());
+  return { from, to };
+}
+
+function estimateDurationMinutes(speedKmh: number, altitudeM: number) {
+  if (speedKmh <= 0) return 160;
+  const base = 130 + Math.round((10000 - Math.min(10000, altitudeM)) / 220) + Math.round((520 / speedKmh) * 40);
+  return Math.max(55, Math.min(320, base));
+}
+
+function formatDuration(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return `${hours} Hr ${String(remainder).padStart(2, "0")} Min`;
+}
+
+function formatClock(date: Date) {
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function plusMinutes(date: Date, minutes: number) {
+  return new Date(date.getTime() + minutes * 60000);
+}
+
+function getAirlineStyle(operator: string) {
+  return AIRLINE_STYLE[operator] ?? AIRLINE_STYLE.Unknown;
+}
+
+function getAirportMeta(code: string) {
+  return AIRPORT_META[code] ?? AIRPORT_META.Unknown;
+}
+
+function getStatusPill(status: string) {
+  if (status === "On Ground") return "bg-slate-100 text-slate-600";
+  if (status.includes("Approaching") || status.includes("Departing")) return "bg-amber-100 text-amber-700";
+  return "bg-emerald-100 text-emerald-700";
+}
+
 export default function FlightsPage() {
   const navigate = useNavigate();
-  const [themeMode, setThemeMode] = useState(() => (localStorage.getItem("aeroguide_theme") === "dark" ? "dark" : "light"));
+  const [themeMode, setThemeMode] = useState<"light" | "dark">(() => (localStorage.getItem("aeroguide_theme") === "dark" ? "dark" : "light"));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [lastUpdated, setLastUpdated] = useState(Date.now());
-  const [flights, setFlights] = useState<typeof REALISTIC_FALLBACK_FLIGHTS>([]);
+  const [flights, setFlights] = useState<FlightCardModel[]>([]);
   const [isUsingLive, setIsUsingLive] = useState(false);
 
   useEffect(() => {
@@ -79,7 +145,7 @@ export default function FlightsPage() {
         const data = await res.json();
         if (cancelled) return;
 
-        const mapped = (data?.states || []).map((s: any[], idx: number) => {
+        const mapped: FlightCardModel[] = (data?.states || []).map((s: any[], idx: number) => {
           const callsign = normalizeCallsign(s[1]);
           const operator = s[2] || "Unknown";
           const onGround = Boolean(s[8]);
@@ -131,175 +197,225 @@ export default function FlightsPage() {
   const filteredFlights = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return flights;
-    return flights.filter((f) =>
-      f.callsign.toLowerCase().includes(q) ||
-      f.operator.toLowerCase().includes(q) ||
-      f.status.toLowerCase().includes(q)
+    return flights.filter((flight) =>
+      flight.callsign.toLowerCase().includes(q) ||
+      flight.operator.toLowerCase().includes(q) ||
+      flight.status.toLowerCase().includes(q)
     );
   }, [flights, query]);
 
-  // Helper to determine status color
-  const getStatusColor = (status: string) => {
-    if (status === "On Ground") return "bg-slate-200 text-slate-600 dark:bg-white/10 dark:text-slate-300 border-slate-300 dark:border-white/20";
-    if (status.includes("Approaching") || status.includes("Departing")) return "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400 border-orange-200 dark:border-orange-500/30";
-    return "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 border-green-200 dark:border-green-500/30";
-  };
+  const isDark = themeMode === "dark";
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-aeroguide-navy text-slate-900 dark:text-white font-sans selection:bg-aeroguide-gold selection:text-aeroguide-navy relative overflow-x-hidden transition-colors duration-300">
-      
-      {/* Abstract Background Elements */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 fixed">
-        <div className="absolute -top-[10%] -right-[10%] w-[50vw] h-[50vw] rounded-full bg-aeroguide-blue opacity-10 dark:opacity-20 blur-[120px]"></div>
-        <div className="absolute top-[40%] -left-[10%] w-[40vw] h-[40vw] rounded-full bg-aeroguide-gold opacity-10 dark:opacity-10 blur-[100px]"></div>
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.03)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px]"></div>
-      </div>
+    <div className={`min-h-screen ${isDark ? "bg-[#081120] text-slate-100" : "bg-[#f3ecff] text-slate-900"}`}>
+      <div className="relative overflow-hidden">
+        <div className={`absolute inset-0 ${isDark ? "bg-[radial-gradient(circle_at_top,#1d2f57_0%,#0b1630_38%,#091120_80%)]" : "bg-[radial-gradient(circle_at_top,#d5c2ff_0%,#efe6ff_38%,#f8f5ff_80%)]"}`} />
+        <div
+          className={`absolute inset-0 ${isDark ? "opacity-[0.08]" : "opacity-[0.12]"}`}
+          style={{
+            backgroundImage: "url('https://i.pinimg.com/1200x/aa/e4/54/aae454df5a468ca876f6912d496b1b61.jpg')",
+            backgroundSize: "cover",
+            backgroundPosition: "center top",
+          }}
+        />
+        <div className={`absolute inset-0 ${isDark ? "bg-[linear-gradient(180deg,rgba(4,10,22,0.48),rgba(4,10,22,0.72))]" : "bg-[linear-gradient(180deg,rgba(255,255,255,0.5),rgba(255,255,255,0.72))]"}`} />
+        <div className={`absolute -left-20 top-20 h-64 w-64 rounded-full blur-3xl ${isDark ? "bg-[#243b67]/35" : "bg-white/35"}`} />
+        <div className={`absolute right-0 top-0 h-80 w-80 rounded-full blur-3xl ${isDark ? "bg-[#3c2d66]/35" : "bg-[#d7c2ff]/45"}`} />
 
-      <div className="max-w-6xl mx-auto relative z-10 p-4 sm:p-8 lg:p-10 space-y-6">
-        
-        {/* HEADER */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-6 backdrop-blur-md shadow-xl transition-colors duration-300">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Live Flights</h1>
-              <div className="flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white/50 dark:bg-white/5 px-3 py-1 shadow-sm">
-                <div className={`h-2.5 w-2.5 rounded-full ${isUsingLive ? 'bg-green-500 animate-pulse' : 'bg-aeroguide-gold'}`}></div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                  {isUsingLive ? 'Live Radar' : 'Simulated'}
-                </span>
+        <div className="relative z-10 w-full px-4 py-8 sm:px-8 lg:px-10">
+          <section className={`rounded-[34px] p-6 backdrop-blur-md ${isDark ? "border border-white/10 bg-white/5 shadow-[0_24px_60px_rgba(2,6,23,0.45)]" : "border border-white/75 bg-white/45 shadow-[0_24px_60px_rgba(183,167,228,0.18)]"}`}>
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-2xl">
+                <div className={`inline-flex rounded-full px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] ${isDark ? "bg-white/10 text-slate-300" : "bg-white/80 text-slate-500"}`}>
+                  AeroGuide Live Board
+                </div>
+                <h1 className={`mt-4 text-4xl font-black tracking-tight sm:text-5xl ${isDark ? "text-white" : "text-slate-900"}`}>
+                  Flights in a cleaner,
+                  <br />
+                  premium ticket view
+                </h1>
+                <p className={`mt-4 max-w-xl text-base leading-7 ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                  Live flights near Bandaranaike Airport presented as compact pastel boarding cards instead of dense radar rows.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div className={`rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] shadow-sm ${isDark ? "bg-white/10 text-slate-200" : "bg-white/85 text-slate-600"}`}>
+                  {isUsingLive ? "Live Radar" : "Simulated Feed"}
+                </div>
+                <button
+                  className={`rounded-2xl p-3 shadow-sm ${isDark ? "border border-white/10 bg-white/10 text-slate-200" : "border border-white/80 bg-white/85 text-slate-600"}`}
+                  onClick={() => setThemeMode((prev) => (prev === "light" ? "dark" : "light"))}
+                  aria-label="Toggle theme"
+                >
+                  <ThemeModeIcon mode={themeMode} />
+                </button>
+                <button
+                  className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-[0_14px_30px_rgba(15,23,42,0.14)]"
+                  onClick={() => navigate("/dashboard")}
+                >
+                  Dashboard
+                </button>
               </div>
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-              <span className="text-aeroguide-blue dark:text-aeroguide-gold font-bold">Bandaranaike (CMB) Airspace</span>
-              <span className="hidden sm:inline">•</span>
-              <span>Last update: {new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_auto_auto]">
+              <div className="relative">
+                <div className={`pointer-events-none absolute inset-y-0 left-4 flex items-center ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search airline, callsign, or status"
+                  className={`w-full rounded-2xl py-4 pl-12 pr-4 text-sm font-medium outline-none shadow-sm ${isDark ? "border border-white/10 bg-white/10 text-white placeholder:text-slate-500" : "border border-white/80 bg-white/88 text-slate-900 placeholder:text-slate-400"}`}
+                />
+              </div>
+
+              <div className={`rounded-2xl px-5 py-4 text-sm font-semibold shadow-sm ${isDark ? "border border-white/10 bg-white/10 text-slate-300" : "border border-white/80 bg-white/78 text-slate-600"}`}>
+                Updated {new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              </div>
+
+              <button
+                onClick={() => navigate("/map")}
+                className="rounded-2xl bg-[#8f76ff] px-6 py-4 text-sm font-bold text-white shadow-[0_16px_32px_rgba(143,118,255,0.28)]"
+              >
+                Open Radar Map
+              </button>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <button
-              className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-colors shadow-sm dark:shadow-none"
-              onClick={() => setThemeMode((p) => (p === "light" ? "dark" : "light"))}
-              aria-label="Toggle theme"
-            >
-              <ThemeModeIcon mode={themeMode} />
-            </button>
-            <button 
-              className="rounded-xl bg-aeroguide-gold px-6 py-3 text-sm font-bold text-aeroguide-navy shadow-[0_4px_14px_rgba(253,185,19,0.3)] hover:brightness-95 dark:hover:brightness-110 transition-all"
-              onClick={() => navigate("/dashboard")}
-            >
-              Dashboard
-            </button>
-          </div>
-        </header>
+          </section>
 
-        {/* SEARCH & MAP BAR */}
-        <section className="flex flex-col sm:flex-row gap-4 rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-4 backdrop-blur-md shadow-lg transition-colors duration-300">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-400">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by callsign, airline, or status..."
-              className="w-full rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 pl-12 pr-4 py-3.5 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-aeroguide-blue dark:focus:border-aeroguide-gold focus:ring-2 focus:ring-aeroguide-blue/10 dark:focus:ring-0 transition-colors shadow-sm dark:shadow-none"
-            />
-          </div>
-          <button
-            onClick={() => navigate("/map")}
-            className="flex items-center justify-center gap-2 rounded-xl bg-aeroguide-blue px-6 py-3.5 text-sm font-bold text-white shadow-md shadow-aeroguide-blue/20 hover:brightness-110 transition-all"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-            </svg>
-            Open Radar Map
-          </button>
-        </section>
-
-        {/* ERROR MESSAGE */}
-        {error && (
-          <div className="rounded-xl border border-orange-200 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 px-6 py-4 text-sm font-bold text-orange-700 dark:text-orange-400 backdrop-blur-md shadow-sm">
-            {error}
-          </div>
-        )}
-
-        {/* FLIGHTS GRID */}
-        <section className="space-y-4">
-          {loading ? (
-            <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-12 text-center backdrop-blur-md shadow-lg">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-aeroguide-blue dark:border-aeroguide-gold border-r-transparent"></div>
-              <p className="mt-4 font-bold text-slate-600 dark:text-slate-300">Scanning CMB Airspace...</p>
-            </div>
-          ) : filteredFlights.length === 0 ? (
-            <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-12 text-center backdrop-blur-md shadow-lg">
-              <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="mt-4 font-bold text-slate-600 dark:text-slate-300">No flights matched your search.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {filteredFlights.map((flight) => (
-                <article
-                  key={flight.id}
-                  className="group rounded-[20px] border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-white/5 p-5 backdrop-blur-md shadow-sm hover:shadow-xl dark:hover:bg-white/10 transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-6"
-                >
-                  
-                  {/* Airline & Callsign */}
-                  <div className="flex items-center gap-4 md:w-1/4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-aeroguide-blue/10 dark:bg-aeroguide-gold/10 text-aeroguide-blue dark:text-aeroguide-gold">
-                      <svg className="h-7 w-7" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M21,16V14L13,9V3.5A1.5,1.5 0 0,0 11.5,2A1.5,1.5 0 0,0 10,3.5V9L2,14V16L10,13.5V19L8,20.5V22L11.5,21L15,22V20.5L13,19V13.5L21,16Z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-xl font-black text-slate-900 dark:text-white tracking-wide">{flight.callsign}</div>
-                      <div className="text-sm font-semibold text-slate-500 dark:text-slate-400">{flight.operator}</div>
-                    </div>
-                  </div>
-
-                  {/* Status Pill */}
-                  <div className="md:w-1/6">
-                    <span className={`inline-flex items-center justify-center rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${getStatusColor(flight.status)}`}>
-                      {flight.status}
-                    </span>
-                  </div>
-
-                  {/* Telemetry Grid */}
-                  <div className="grid grid-cols-3 gap-4 md:w-5/12">
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Speed</div>
-                      <div className="mt-1 text-sm font-bold text-slate-900 dark:text-white">{flight.speedKmh} <span className="text-xs font-normal text-slate-500">km/h</span></div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Altitude</div>
-                      <div className="mt-1 text-sm font-bold text-slate-900 dark:text-white">{flight.altitudeM} <span className="text-xs font-normal text-slate-500">m</span></div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Heading</div>
-                      <div className="mt-1 text-sm font-bold text-slate-900 dark:text-white">{flight.heading}</div>
-                    </div>
-                  </div>
-
-                  {/* Action Button */}
-                  <div className="md:w-1/6 flex justify-end">
-                    <button
-                      onClick={() => navigate("/map")}
-                      className="w-full md:w-auto rounded-xl border border-slate-300 dark:border-white/20 bg-transparent px-6 py-2.5 text-sm font-bold text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
-                    >
-                      Track
-                    </button>
-                  </div>
-
-                </article>
-              ))}
+          {error && (
+            <div className={`mt-5 rounded-2xl px-5 py-4 text-sm font-semibold shadow-sm ${isDark ? "border border-orange-500/20 bg-orange-500/10 text-orange-300" : "border border-orange-200 bg-white/80 text-orange-700"}`}>
+              {error}
             </div>
           )}
-        </section>
+
+          {loading ? (
+            <section className="mt-6">
+              <div className={`rounded-[28px] p-12 text-center backdrop-blur-md ${isDark ? "border border-white/10 bg-white/5 shadow-[0_20px_50px_rgba(2,6,23,0.4)]" : "border border-white/80 bg-white/60 shadow-[0_20px_50px_rgba(183,167,228,0.14)]"}`}>
+                <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-[#8f76ff] border-r-transparent" />
+                <p className={`mt-4 font-bold ${isDark ? "text-slate-300" : "text-slate-600"}`}>Scanning CMB airspace...</p>
+              </div>
+            </section>
+          ) : filteredFlights.length === 0 ? (
+            <section className="mt-6">
+              <div className={`rounded-[28px] p-12 text-center backdrop-blur-md ${isDark ? "border border-white/10 bg-white/5 shadow-[0_20px_50px_rgba(2,6,23,0.4)]" : "border border-white/80 bg-white/60 shadow-[0_20px_50px_rgba(183,167,228,0.14)]"}`}>
+                <p className={`font-bold ${isDark ? "text-slate-300" : "text-slate-600"}`}>No flights matched your search.</p>
+              </div>
+            </section>
+          ) : (
+            <section className="mt-8 grid gap-5 grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3">
+              {filteredFlights.map((flight, index) => (
+                <FlightTicketCard key={flight.id} flight={flight} index={index} onTrack={() => navigate("/map")} isDark={isDark} />
+              ))}
+            </section>
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+function FlightTicketCard({
+  flight,
+  index,
+  onTrack,
+  isDark,
+}: {
+  flight: FlightCardModel;
+  index: number;
+  onTrack: () => void;
+  isDark: boolean;
+}) {
+  const route = parseRoute(flight.routeHint);
+  const duration = estimateDurationMinutes(flight.speedKmh, flight.altitudeM);
+  const departure = useMemo(() => {
+    const base = new Date();
+    const minuteSeed = (flight.callsign.charCodeAt(0) + flight.callsign.length * 11 + index * 9) % 90;
+    base.setMinutes(base.getMinutes() - 25 + minuteSeed, 0, 0);
+    return base;
+  }, [flight.callsign, index]);
+  const arrival = useMemo(() => plusMinutes(departure, duration), [departure, duration]);
+  const airline = getAirlineStyle(flight.operator);
+  const statusTone = getStatusPill(flight.status);
+
+  return (
+    <article
+      className={`overflow-hidden rounded-[24px] backdrop-blur-xl ${isDark ? "border border-white/10 bg-white/5 shadow-[0_18px_40px_rgba(2,6,23,0.38)]" : "border border-white/70 bg-white/38 shadow-[0_18px_40px_rgba(162,146,214,0.18)]"}`}
+      style={{ animationDelay: `${index * 70}ms` }}
+    >
+      <div className={`relative px-4 py-3.5 sm:px-5 ${isDark ? "bg-[linear-gradient(180deg,rgba(15,23,42,0.78),rgba(15,23,42,0.64))]" : "bg-[linear-gradient(180deg,rgba(255,255,255,0.58),rgba(255,255,255,0.42))]"}`}>
+        <div className={`absolute inset-0 ${isDark ? "bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.1),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(139,116,247,0.16),transparent_34%)]" : "bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.75),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(143,118,255,0.14),transparent_34%)]"}`} />
+        <div className="relative">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className={`text-[11px] font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                {getAirportMeta(route.from).city} International
+              </div>
+              <div className={`mt-0.5 text-[1.7rem] font-black leading-none tracking-tight ${isDark ? "text-white" : "text-slate-950"}`}>{route.from}</div>
+              <div className={`mt-1 text-[11px] font-medium ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                {new Intl.DateTimeFormat([], { month: "short", day: "numeric" }).format(departure)} · {formatClock(departure)}
+              </div>
+            </div>
+
+            <div className="pt-1 text-center">
+              <div className={`flex items-center justify-center gap-2 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                <div className={`h-px w-8 ${isDark ? "bg-slate-600" : "bg-slate-300"}`} />
+                <svg className={`h-3.5 w-3.5 ${isDark ? "text-white" : "text-slate-900"}`} viewBox="0 0 24 24" fill="none">
+                  <path d="M21 3 3 11l7 2 2 7 9-17Zm-9 17-2-7-7-2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <div className={`h-px w-8 ${isDark ? "bg-slate-600" : "bg-slate-300"}`} />
+              </div>
+              <div className={`mt-1.5 text-[11px] font-semibold ${isDark ? "text-slate-400" : "text-slate-500"}`}>-{formatDuration(duration)}</div>
+            </div>
+
+            <div className="text-right">
+              <div className={`text-[11px] font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                {getAirportMeta(route.to).city} Intl.
+              </div>
+              <div className={`mt-0.5 text-[1.7rem] font-black leading-none tracking-tight ${isDark ? "text-white" : "text-slate-950"}`}>{route.to}</div>
+              <div className={`mt-1 text-[11px] font-medium ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                {new Intl.DateTimeFormat([], { month: "short", day: "numeric" }).format(arrival)} · {formatClock(arrival)}
+              </div>
+            </div>
+          </div>
+
+          <div className={`mt-4 flex items-center justify-between gap-3 pt-3 ${isDark ? "border-t border-white/10" : "border-t border-white/70"}`}>
+            <div className="flex min-w-0 items-center gap-3">
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[11px] font-black tracking-wide shadow-sm"
+                style={{ backgroundColor: airline.logoBg, color: airline.logoText }}
+              >
+                {airline.code}
+              </div>
+              <div className="min-w-0">
+                <div className={`truncate text-[0.95rem] font-black ${isDark ? "text-white" : "text-slate-900"}`}>{flight.operator.toUpperCase()}</div>
+                <div className={`mt-0.5 flex items-center gap-2 text-[11px] ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                  <span className="text-[#f59e0b]">★</span>
+                  <span>{flight.isLive ? "Live radar" : "Simulated"}</span>
+                  <span className={`rounded-full px-2 py-0.5 font-bold ${statusTone}`}>{flight.status}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="hidden text-right sm:block">
+                <div className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDark ? "text-slate-500" : "text-slate-400"}`}>Speed</div>
+                <div className={`mt-0.5 text-sm font-black ${isDark ? "text-white" : "text-slate-900"}`}>{flight.speedKmh}</div>
+              </div>
+              <button
+                onClick={onTrack}
+                className="rounded-full bg-slate-900 px-3.5 py-1.5 text-[11px] font-bold text-white"
+              >
+                Track
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
   );
 }

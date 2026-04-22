@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -7,9 +7,25 @@
   --aero-font-scale: 100%;
 }
 
+/* Removed old global-lang classes */
+
+/* Keep Google Translate chrome hidden so only our switcher is visible. */
+.goog-te-banner-frame,
+.goog-te-gadget-icon,
+#goog-gt-tt,
+.goog-te-balloon-frame {
+  display: none !important;
+}
+
+body {
+  top: 0 !important;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: #0b1d3a;
@@ -68,7 +84,11 @@ body,
 }
 
 .glass-panel {
-  background: linear-gradient(180deg, rgba(6, 18, 39, 0.92), rgba(8, 27, 49, 0.86));
+  background: linear-gradient(
+    180deg,
+    rgba(6, 18, 39, 0.92),
+    rgba(8, 27, 49, 0.86)
+  );
   border-right: 1px solid rgba(148, 163, 184, 0.18);
   backdrop-filter: blur(10px);
 }
@@ -274,7 +294,10 @@ body,
   letter-spacing: 0.02em;
   cursor: pointer;
   box-shadow: 0 14px 34px rgba(3, 10, 28, 0.44);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
 }
 
 .ag-chat-fab:hover {
@@ -313,14 +336,20 @@ body,
   border-radius: 20px;
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.25);
-  background: linear-gradient(180deg, rgba(8, 16, 33, 0.98) 0%, rgba(12, 23, 44, 0.96) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(8, 16, 33, 0.98) 0%,
+    rgba(12, 23, 44, 0.96) 100%
+  );
   box-shadow: 0 26px 52px rgba(2, 6, 23, 0.45);
   backdrop-filter: blur(10px);
   transform-origin: bottom right;
   transform: translateY(14px) scale(0.95);
   opacity: 0;
   pointer-events: none;
-  transition: transform 0.22s ease, opacity 0.2s ease;
+  transition:
+    transform 0.22s ease,
+    opacity 0.2s ease;
 }
 
 .ag-chat-panel.open {
@@ -335,7 +364,11 @@ body,
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-  background: linear-gradient(135deg, rgba(17, 70, 133, 0.9), rgba(16, 145, 212, 0.78));
+  background: linear-gradient(
+    135deg,
+    rgba(17, 70, 133, 0.9),
+    rgba(16, 145, 212, 0.78)
+  );
 }
 
 .ag-chat-title {
@@ -377,8 +410,16 @@ body,
   display: grid;
   gap: 10px;
   background:
-    radial-gradient(circle at 12% 10%, rgba(34, 197, 94, 0.09) 0%, transparent 35%),
-    radial-gradient(circle at 86% 4%, rgba(56, 189, 248, 0.16) 0%, transparent 38%),
+    radial-gradient(
+      circle at 12% 10%,
+      rgba(34, 197, 94, 0.09) 0%,
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 86% 4%,
+      rgba(56, 189, 248, 0.16) 0%,
+      transparent 38%
+    ),
     rgba(10, 21, 40, 0.72);
 }
 
@@ -432,7 +473,9 @@ body,
   font-size: 11px;
   padding: 5px 9px;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .ag-chat-chip:hover {

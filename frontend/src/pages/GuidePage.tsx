@@ -264,7 +264,7 @@ export default function GuidePage() {
         <div className="absolute top-[40%] -left-[10%] w-[40vw] h-[40vw] rounded-full bg-aeroguide-gold opacity-10 dark:opacity-10 blur-[100px]"></div>
       </div>
 
-      <div className="max-w-6xl mx-auto relative z-10 p-4 sm:p-8 lg:p-10 space-y-6">
+      <div className="w-full relative z-10 p-4 sm:p-8 lg:p-10 space-y-6">
         
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-6 backdrop-blur-md shadow-xl transition-colors duration-300">
           <div>
@@ -386,7 +386,7 @@ export default function GuidePage() {
               <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-6">{activeGuide.objective}</div>
               
               <div className="space-y-4">
-                {activeGuide.points.map((p, idx) => (
+                {activeGuide.points.map((p: string, idx: number) => (
                   <div key={p} className="flex gap-4 items-start">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-aeroguide-gold/20 text-aeroguide-navy dark:text-aeroguide-gold text-xs font-bold">
                       {idx + 1}
@@ -399,7 +399,7 @@ export default function GuidePage() {
               <div className="mt-8 pt-6 border-t border-slate-200 dark:border-white/10">
                 <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">Prepare these items</div>
                 <div className="flex flex-wrap gap-2">
-                  {activeGuide.prepare.map((item) => (
+                  {activeGuide.prepare.map((item: string) => (
                     <span key={item} className="rounded-lg border border-slate-200 dark:border-white/20 bg-white dark:bg-white/10 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 shadow-sm">
                       {item}
                     </span>

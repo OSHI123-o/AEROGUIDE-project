@@ -32,6 +32,25 @@ export async function getSession() {
 }
 
 /**
+ * Refresh the local auth flag from the active Supabase session.
+ */
+export async function syncAuthenticatedState() {
+  const session = await getSession();
+  const isSignedIn = Boolean(session);
+
+  setAuthenticated(isSignedIn);
+
+  if (session?.user?.email) {
+    localStorage.setItem("aeroguide_user_email", session.user.email);
+  } else {
+    localStorage.removeItem("aeroguide_user_email");
+    localStorage.removeItem("aeroguide_user_profile");
+  }
+
+  return isSignedIn;
+}
+
+/**
  * Get the access token for API calls.
  */
 export async function getAccessToken(): Promise<string | null> {
@@ -65,3 +84,5 @@ supabase.auth.onAuthStateChange((event, session) => {
     localStorage.removeItem("aeroguide_user_profile");
   }
 });
+
+void syncAuthenticatedState();

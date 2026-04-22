@@ -14,7 +14,8 @@ import PassengerHomePage from './pages/PassengerHomePage.tsx';
 import { hasPassengerSession } from './services/passengerSession';
 import { isAuthenticated } from './services/authSession';
 import RightSideChatbot from './components/RightSideChatbot.tsx';
-
+import AccessibilityWidget from './components/AccessibilityWidget'; // add this
+import GlobalLanguageSwitcher from './components/GlobalLanguageSwitcher.tsx';
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const location = useLocation();
@@ -37,6 +38,7 @@ function App() {
   return (
     <BrowserRouter>
       <>
+        <GlobalLanguageSwitcher />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
@@ -80,7 +82,9 @@ function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
+
         <RightSideChatbot />
+        <AccessibilityWidget />
       </>
     </BrowserRouter>
   );

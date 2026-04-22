@@ -197,8 +197,6 @@ export async function lookupFlightsByPnr(pnr: string, lastName: string): Promise
   const ln = normalizeLastName(lastName);
 
   // Prefer server lookup when available.
-  // If not available or not matched, return a personalized demo journey
-  // so every passenger can access "My Booking" without knowing seed data.
   try {
     const fromApi = await lookupFlightsFromApi(p, ln);
     if (!fromApi.length) return buildPersonalizedDemoFlights(p, ln);
@@ -206,4 +204,32 @@ export async function lookupFlightsByPnr(pnr: string, lastName: string): Promise
   } catch {
     return await lookupFlightsFromMock(p, ln);
   }
+}
+
+export async function suggestPassengers(query: string): Promise<{ pnr: string; lastName: string }[]> {
+  const q = query.trim().toUpperCase();
+  if (q.length < 2) return [];
+
+  try {
+    const configured = (import.meta as any)?.env?.VITE_FLIGHT_LOOKUP_ENDPOINT as string | undefined;
+    const base = configured?.trim() || "/api/flight-lookup";
+    // Replace /flight-lookup with /passenger-suggest
+    const endpoint = base.replace(/\/flight-lookup$/, "/passenger-suggest") + `?q=${encodeURIComponent(q)}`;
+    
+    const res = await fetch(endpoint);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) return data;
+    }
+  } catch {
+    // ignore fetch error
+  }
+
+  // Fallback to mock DB
+  const matches = MOCK_DB.filter((f) => f.pnr.includes(q) || f.lastName.includes(q));
+  const unique = new Map<string, { pnr: string; lastName: string }>();
+  for (const m of matches) {
+    unique.set(m.pnr, { pnr: m.pnr, lastName: m.lastName });
+  }
+  return Array.from(unique.values()).slice(0, 5);
 }

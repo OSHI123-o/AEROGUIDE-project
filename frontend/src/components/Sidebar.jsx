@@ -148,6 +148,11 @@ export default function Sidebar({
         position: "relative",
         zIndex: 1000,
         overflowY: "auto",
+        background:
+          "linear-gradient(180deg, rgba(7,22,46,0.96) 0%, rgba(8,29,58,0.94) 55%, rgba(7,22,46,0.98) 100%)",
+        borderRight: "1px solid rgba(148,163,184,0.2)",
+        boxShadow: "0 20px 40px rgba(2,6,23,0.28)",
+        backdropFilter: "blur(14px)",
       }}
     >
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -157,7 +162,7 @@ export default function Sidebar({
               margin: 0,
               fontSize: "1.5rem",
               fontWeight: 900,
-              background: "linear-gradient(to right, #14b8a6, #f59e0b)",
+              background: "linear-gradient(90deg, #7dd3fc 0%, #38bdf8 45%, #22d3ee 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               letterSpacing: "-0.5px",
@@ -172,9 +177,9 @@ export default function Sidebar({
           type="button"
           onClick={() => setLanguage?.((l) => (l === "en" ? "si" : l === "si" ? "ta" : "en"))}
           style={{
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            color: "white",
+            background: "rgba(15,23,42,0.45)",
+            border: "1px solid rgba(148,163,184,0.35)",
+            color: "#e2e8f0",
             padding: "0.35rem 0.7rem",
             borderRadius: "10px",
             cursor: "pointer",
@@ -201,9 +206,17 @@ export default function Sidebar({
         </form>
 
         {flightData && (
-          <div className="glass-card" style={{ padding: "1rem" }}>
+          <div
+            className="glass-card"
+            style={{
+              padding: "1rem",
+              background: "rgba(15,23,42,0.48)",
+              border: "1px solid rgba(148,163,184,0.28)",
+              boxShadow: "0 10px 24px rgba(2,6,23,0.22)",
+            }}
+          >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-              <h3 style={{ margin: 0, color: "#14b8a6" }}>{strings.flightDetails}</h3>
+              <h3 style={{ margin: 0, color: "#67e8f9" }}>{strings.flightDetails}</h3>
               <span
                 style={{
                   background: flightData.status === "Delayed" ? "rgba(239, 68, 68, 0.2)" : "rgba(34, 197, 94, 0.2)",
@@ -234,7 +247,7 @@ export default function Sidebar({
               </div>
               <div>
                 <div style={{ color: "#94a3b8", fontSize: "0.75rem" }}>{strings.gate}</div>
-                <div style={{ fontWeight: 900, color: "#f59e0b" }}>{flightData.gate}</div>
+                <div style={{ fontWeight: 900, color: "#38bdf8" }}>{flightData.gate}</div>
               </div>
 
               <div style={{ gridColumn: "span 2" }}>
@@ -249,8 +262,9 @@ export default function Sidebar({
               style={{
                 width: "100%",
                 marginTop: "0.8rem",
-                background: "linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)",
-                boxShadow: "0 4px 12px rgba(245, 158, 11, 0.3)",
+                background: "linear-gradient(135deg, #22d3ee 0%, #0ea5e9 100%)",
+                boxShadow: "0 6px 16px rgba(14, 165, 233, 0.32)",
+                color: "#082f49",
               }}
               onClick={() => onNavigateToGate?.(flightData)}
             >
@@ -268,7 +282,7 @@ export default function Sidebar({
 
       {navigationSteps.length > 0 && (
         <section className="animate-fade-in">
-          <h3 style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: "0.75rem", color: "#14b8a6", marginTop: 0 }}>
+          <h3 style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: "0.75rem", color: "#67e8f9", marginTop: 0 }}>
             {strings.instructions}
           </h3>
 
@@ -278,21 +292,21 @@ export default function Sidebar({
                 key={idx}
                 style={{
                   padding: "0.85rem",
-                  background: idx === 0 ? "rgba(20, 184, 166, 0.16)" : "rgba(255,255,255,0.03)",
-                  borderLeft: idx === 0 ? "3px solid #14b8a6" : "3px solid transparent",
+                  background: idx === 0 ? "rgba(14, 165, 233, 0.16)" : "rgba(255,255,255,0.04)",
+                  borderLeft: idx === 0 ? "3px solid #38bdf8" : "3px solid transparent",
                   borderRadius: "0 8px 8px 0",
                   display: "flex",
                   alignItems: "center",
                   gap: "0.85rem",
                 }}
               >
-                <div style={{ fontSize: "1.2rem", fontWeight: 900, color: idx === 0 ? "#14b8a6" : "rgba(255,255,255,0.3)" }}>{idx + 1}</div>
+                <div style={{ fontSize: "1.2rem", fontWeight: 900, color: idx === 0 ? "#38bdf8" : "rgba(255,255,255,0.3)" }}>{idx + 1}</div>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: "0.9rem", marginBottom: "0.2rem" }}>{formatInstruction(step)}</div>
                   <div style={{ fontSize: "0.78rem", color: "#94a3b8", display: "flex", gap: "0.8rem" }}>
-                    <span>Distance: {Math.round(step.distance)}m</span>
-                    <span>ETA: {Math.round(step.duration)}s</span>
-                  </div>
+                      <span>Distance: {Math.round(step.distance)}m</span>
+                      <span>ETA: {Math.round(step.duration)}s</span>
+                    </div>
                 </div>
               </div>
             ))}
@@ -312,9 +326,9 @@ export default function Sidebar({
               letterSpacing: "1px",
               marginTop: 0,
             }}
-          >
-            {strings.pois}
-          </h3>
+            >
+              {strings.pois}
+            </h3>
 
           <input
             className="searchInput"
@@ -357,7 +371,7 @@ export default function Sidebar({
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: 900 }}>
-              {strings.results}: <span style={{ color: "#14b8a6" }}>{pois.length}</span>
+              {strings.results}: <span style={{ color: "#38bdf8" }}>{pois.length}</span>
             </div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{strings.floors}</div>
           </div>

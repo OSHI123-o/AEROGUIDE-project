@@ -223,7 +223,7 @@ export default function Login() {
       className="min-h-screen bg-[#0A1A2F] px-4 py-8 text-slate-900 sm:px-6 lg:px-8 relative overflow-hidden"
       aria-label="AEROGUIDE login experience"
       style={{
-        backgroundImage: `url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=1600&auto=format&fit=crop')`,
+        backgroundImage: `url('https://img.freepik.com/free-photo/amazing-beautiful-art-sky-with-colorful-clouds_58702-1866.jpg?semt=ais_hybrid&w=740&q=80')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }}
@@ -234,7 +234,7 @@ export default function Login() {
       {/* Header */}
       <div className="relative mx-auto mb-12 flex w-full max-w-7xl items-center justify-between z-10">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FDB913] shadow-[0_10px_30px_rgba(253,185,19,0.3)]">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#d7ad58] shadow-[0_10px_30px_rgba(215,173,88,0.2)]">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -262,36 +262,20 @@ export default function Login() {
           aria-label="Language selector"
           className="flex gap-1 rounded-full border border-white/20 bg-white/5 p-1 backdrop-blur-md"
         >
-          {(['EN', 'SI', 'TA'] as Language[]).map((lang) => (
-            <button
-              key={lang}
-              type="button"
-              onClick={() => {
-                setLanguage(lang);
-                setStoredLang(lang);
-              }}
-              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
-                language === lang
-                  ? 'bg-[#FDB913] text-[#0A1A2F]'
-                  : 'text-white hover:bg-white/10'
-              }`}
-            >
-              {lang}
-            </button>
-          ))}
+        
         </nav>
       </div>
 
       {/* Main Content Area */}
-      <section className="relative mx-auto w-full max-w-7xl rounded-[32px] border border-white/10 bg-white/5 p-4 shadow-2xl backdrop-blur-2xl z-10">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <section className="relative mx-auto w-full max-w-lg rounded-[32px] border border-white/10 bg-white/5 p-4 shadow-2xl backdrop-blur-2xl z-10">
+        <div className="grid grid-cols-1 gap-4">
           
           {/* LEFT SIDE: Form */}
           <div className="rounded-[28px] px-6 py-10 sm:px-12">
             <h1 className="text-lg font-medium uppercase tracking-widest text-slate-300">
               Holla,
             </h1>
-            <h2 className="mt-2 text-4xl font-black uppercase leading-none tracking-tight text-[#FDB913] sm:text-5xl">
+            <h2 className="mt-2 text-4xl font-black uppercase leading-none tracking-tight text-[#e6edf8] sm:text-5xl">
               Welcome Back
             </h2>
 
@@ -319,7 +303,7 @@ export default function Login() {
                   className={`w-full rounded-xl border px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-slate-500 ${
                     errors.email
                       ? 'border-red-400/50 bg-red-500/5 focus:border-red-400'
-                      : 'border-white/10 bg-white/5 focus:border-[#FDB913] focus:bg-white/10'
+                      : 'border-white/10 bg-white/5 focus:border-[#d7ad58] focus:bg-white/10'
                   }`}
                   placeholder="name@example.com"
                 />
@@ -340,7 +324,7 @@ export default function Login() {
                     className={`w-full rounded-xl border px-4 py-3.5 pr-16 text-sm text-white outline-none transition placeholder:text-slate-500 ${
                       errors.password
                         ? 'border-red-400/50 bg-red-500/5 focus:border-red-400'
-                        : 'border-white/10 bg-white/5 focus:border-[#FDB913] focus:bg-white/10'
+                        : 'border-white/10 bg-white/5 focus:border-[#d7ad58] focus:bg-white/10'
                     }`}
                     placeholder="••••••••••••"
                   />
@@ -361,7 +345,7 @@ export default function Login() {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={() => setRememberMe(!rememberMe)}
-                    className="h-4 w-4 rounded border-white/20 bg-white/10 text-[#FDB913] focus:ring-[#FDB913] focus:ring-offset-0"
+                    className="h-4 w-4 rounded border-white/20 bg-white/10 text-[#d7ad58] focus:ring-[#d7ad58] focus:ring-offset-0"
                   />
                   <span className="text-sm font-medium text-slate-300">Remember me</span>
                 </label>
@@ -369,7 +353,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => navigate('/forgot-password')}
-                  className="text-sm font-semibold text-[#FDB913] hover:text-yellow-300 transition"
+                  className="text-sm font-semibold text-[#d7ad58] hover:text-slate-200 transition"
                 >
                   Forgot Password?
                 </button>
@@ -380,7 +364,7 @@ export default function Login() {
                 disabled={!isFormValid || isLoading}
                 className={`mt-4 w-full rounded-xl px-4 py-4 text-sm font-bold tracking-wide transition-all ${
                   isFormValid && !isLoading
-                    ? 'bg-[#FDB913] text-[#0A1A2F] shadow-[0_4px_14px_rgba(253,185,19,0.3)] hover:bg-[#e6a60d]'
+                    ? 'bg-[#d7ad58] text-[#0A1A2F] shadow-[0_4px_14px_rgba(215,173,88,0.25)] hover:bg-[#c79a44]'
                     : 'cursor-not-allowed bg-white/5 border border-white/10 text-slate-500' // Fixed the ugly light grey disabled button
                 }`}
               >
@@ -414,7 +398,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => navigate('/signup')}
-                  className="font-bold text-[#FDB913] hover:text-yellow-300 transition"
+                  className="font-bold text-[#d7ad58] hover:text-slate-200 transition"
                 >
                   Sign Up
                 </button>
@@ -422,91 +406,7 @@ export default function Login() {
             </form>
           </div>
 
-          {/* RIGHT SIDE: Clean Glassmorphism Graphic */}
-          <div className="relative flex flex-col justify-center rounded-[28px] px-6 py-10 sm:px-12 overflow-hidden">
-            
-            <div className="relative z-10 mb-10">
-              <h1 className="text-4xl font-black uppercase leading-[1.05] tracking-tight text-[#FDB913] sm:text-5xl">
-                Access your saved <br /> passenger details.
-              </h1>
-              <p className="mt-5 max-w-sm text-sm leading-relaxed text-slate-300">
-                Sign in to manage passengers, saved routes, preferred languages and view real-time flight dashboards.
-              </p>
-            </div>
 
-            {/* Structured Glass Dashboard Mockup (Fixes the messy overlap) */}
-            <div className="relative w-full max-w-md mx-auto">
-              {/* Background Glow */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#FDB913]/20 blur-[80px] rounded-full pointer-events-none" />
-              
-              {/* Main Mockup Card */}
-              <div className="relative flex flex-col gap-5 rounded-[24px] border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
-                
-                {/* Mockup Header */}
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FDB913]">
-                      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-[#0A1A2F]" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M22 2L11 13" />
-                        <path d="M22 2L15 22L11 13L2 9L22 2Z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Aeroguide</div>
-                      <div className="text-sm font-bold text-white">Smart Journeys</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-300">
-                    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                    Secure
-                  </div>
-                </div>
-
-                {/* Mockup Flight Card */}
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-inner">
-                  <div className="mb-4 flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Next Flight</span>
-                    <div className="flex items-center gap-2 text-lg font-bold text-white">
-                      <span>LHR</span>
-                      <svg className="h-4 w-4 text-[#FDB913]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12h14m0 0l-7-7m7 7l-7 7" />
-                      </svg>
-                      <span>JFK</span>
-                    </div>
-                  </div>
-                  
-                  {/* Progress Bar */}
-                  <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full w-[65%] rounded-full bg-[#FDB913]"></div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-xs font-medium text-slate-400">
-                    <span>Boarding: 10:45 AM</span>
-                    <span className="text-[#FDB913]">Gate: A12</span>
-                  </div>
-                </div>
-
-                {/* Mockup Feature Card */}
-                <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/10 text-white">
-                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-white">Terminal Navigation</div>
-                    <div className="text-xs text-slate-400">Real-time gate and lounge maps</div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-            
-          </div>
         </div>
       </section>
     </main>

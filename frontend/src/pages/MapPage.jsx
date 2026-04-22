@@ -1,13 +1,51 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import ThemeModeIcon from "../components/ThemeModeIcon";
 import Sidebar from "../components/Sidebar";
-import MapComponent from "../components/MapComponent";
 import { flights, pois as ALL_POIS } from "../mockData";
 import { getCategoryMeta } from "../poiCatalog";
 import { getStoredLang, setStoredLang } from "../services/i18n";
 
 const DEFAULT_LOCATION = [7.1795, 79.8835];
+const DEFAULT_GATE_LOCATION = [7.1802, 79.8848];
+const GOOGLE_MAPS_SCRIPT_ID = "aeroguide-google-maps-sdk";
+
+let googleMapsLoaderPromise = null;
+
+function loadGoogleMaps(apiKey) {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("window_unavailable"));
+  }
+  if (window.google && window.google.maps) {
+    return Promise.resolve(window.google.maps);
+  }
+  if (googleMapsLoaderPromise) {
+    return googleMapsLoaderPromise;
+  }
+
+  googleMapsLoaderPromise = new Promise((resolve, reject) => {
+    const existing = document.getElementById(GOOGLE_MAPS_SCRIPT_ID);
+    if (existing) {
+      existing.addEventListener("load", () => resolve(window.google.maps));
+      existing.addEventListener("error", () => reject(new Error("google_maps_load_failed")));
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = GOOGLE_MAPS_SCRIPT_ID;
+    script.async = true;
+    script.defer = true;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}`;
+    script.onload = () => {
+      if (window.google && window.google.maps) resolve(window.google.maps);
+      else reject(new Error("google_maps_unavailable"));
+    };
+    script.onerror = () => reject(new Error("google_maps_load_failed"));
+    document.head.appendChild(script);
+  });
+
+  return googleMapsLoaderPromise;
+}
 
 function haversineMeters([lat1, lon1], [lat2, lon2]) {
   const R = 6371000;
@@ -29,15 +67,25 @@ export default function MapPage() {
   const [flightData, setFlightData] = useState(null);
   const [selectedPoI, setSelectedPoI] = useState(null);
   const [userLocation, setUserLocation] = useState(DEFAULT_LOCATION);
-  const [routePolyline, setRoutePolyline] = useState(null);
   const [navigationSteps, setNavigationSteps] = useState([]);
-  const [disableMapWheelZoom, setDisableMapWheelZoom] = useState(false);
+  const [routePath, setRoutePath] = useState([]);
   const [handledGateParam, setHandledGateParam] = useState(null);
+  const [mapReady, setMapReady] = useState(false);
+  const [mapError, setMapError] = useState("");
 
   const [poiQuery, setPoiQuery] = useState("");
   const [activeCategories, setActiveCategories] = useState(() => new Set(ALL_POIS.map((p) => p.category)));
 
-  // Sync theme with HTML root for Tailwind Dark Mode
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const userMarkerRef = useRef(null);
+  const destinationMarkerRef = useRef(null);
+  const routeLineRef = useRef(null);
+  const lastRoutedOriginRef = useRef(null);
+  const lastRoutedDestinationRef = useRef(null);
+
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
+
   useEffect(() => {
     localStorage.setItem("aeroguide_theme", themeMode);
     if (themeMode === "dark") {
@@ -56,11 +104,43 @@ export default function MapPage() {
 
   useEffect(() => {
     if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (position) => setUserLocation([position.coords.latitude, position.coords.longitude]),
-      () => {}
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const next = [position.coords.latitude, position.coords.longitude];
+        setUserLocation((prev) => {
+          if (!prev) return next;
+          return haversineMeters(prev, next) >= 5 ? next : prev;
+        });
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
     );
+
+    return () => navigator.geolocation.clearWatch(watchId);
   }, []);
+
+  useEffect(() => {
+    if (!googleMapsApiKey) {
+      setMapError("Missing VITE_GOOGLE_MAPS_API_KEY");
+      return;
+    }
+
+    let active = true;
+    loadGoogleMaps(googleMapsApiKey)
+      .then(() => {
+        if (!active) return;
+        setMapReady(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        setMapError("Failed to load Google Maps");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [googleMapsApiKey]);
 
   const handleSearch = useCallback((flightNo) => {
     const query = String(flightNo || "").trim().toLowerCase();
@@ -90,17 +170,13 @@ export default function MapPage() {
         const data = await response.json();
 
         if (data.code === "Ok") {
-          const coordinates = data.routes[0].geometry.coordinates.map((coord) => [coord[1], coord[0]]);
-          setRoutePolyline(coordinates);
           setNavigationSteps(data.routes[0].legs[0].steps);
         } else {
-          setRoutePolyline(null);
           setNavigationSteps([]);
           alert("Error calculating route.");
         }
       } catch (error) {
         console.error("Routing error:", error);
-        setRoutePolyline(null);
         setNavigationSteps([]);
         alert("Failed to fetch route.");
       }
@@ -127,9 +203,7 @@ export default function MapPage() {
 
     const normalizeGate = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     const normalizedGate = normalizeGate(gateParam);
-    const gatePoi = ALL_POIS.find(
-      (p) => p.category === "gate" && normalizeGate(p.name).includes(normalizedGate)
-    );
+    const gatePoi = ALL_POIS.find((p) => p.category === "gate" && normalizeGate(p.name).includes(normalizedGate));
 
     if (gatePoi) {
       setHandledGateParam(gateParam);
@@ -175,12 +249,162 @@ export default function MapPage() {
       });
   }, [poiQuery, activeCategories, userLocation]);
 
+  const destinationCoords = useMemo(() => {
+    if (selectedPoI?.lat && selectedPoI?.lon) {
+      return [selectedPoI.lat, selectedPoI.lon];
+    }
+
+    const gateParam = searchParams.get("gate");
+    if (gateParam) {
+      const normalizedGate = String(gateParam).toLowerCase().replace(/[^a-z0-9]/g, "");
+      const gatePoi = ALL_POIS.find(
+        (p) => p.category === "gate" && String(p.name).toLowerCase().replace(/[^a-z0-9]/g, "").includes(normalizedGate)
+      );
+      if (gatePoi?.lat && gatePoi?.lon) {
+        return [gatePoi.lat, gatePoi.lon];
+      }
+    }
+
+    return DEFAULT_GATE_LOCATION;
+  }, [selectedPoI, searchParams]);
+
+  useEffect(() => {
+    if (!userLocation || !destinationCoords) return;
+
+    const origin = { lat: userLocation[0], lng: userLocation[1] };
+    const destination = { lat: destinationCoords[0], lng: destinationCoords[1] };
+
+    const originMoved =
+      !lastRoutedOriginRef.current ||
+      haversineMeters(
+        [lastRoutedOriginRef.current.lat, lastRoutedOriginRef.current.lng],
+        [origin.lat, origin.lng]
+      ) >= 10;
+
+    const destinationMoved =
+      !lastRoutedDestinationRef.current ||
+      haversineMeters(
+        [lastRoutedDestinationRef.current.lat, lastRoutedDestinationRef.current.lng],
+        [destination.lat, destination.lng]
+      ) >= 3;
+
+    if (!originMoved && !destinationMoved && routePath.length > 1) return;
+
+    lastRoutedOriginRef.current = origin;
+    lastRoutedDestinationRef.current = destination;
+
+    let active = true;
+    const controller = new AbortController();
+
+    const fetchRoute = async () => {
+      try {
+        const start = `${origin.lng},${origin.lat}`;
+        const end = `${destination.lng},${destination.lat}`;
+        const url = `https://router.project-osrm.org/route/v1/walking/${start};${end}?overview=full&geometries=geojson&steps=true`;
+        const res = await fetch(url, { signal: controller.signal });
+        const data = await res.json();
+        if (!active) return;
+
+        if (data.code === "Ok" && data.routes?.[0]?.geometry?.coordinates?.length > 1) {
+          const path = data.routes[0].geometry.coordinates.map(([lng, lat]) => ({ lat, lng }));
+          setRoutePath(path);
+          setNavigationSteps(data.routes[0].legs?.[0]?.steps ?? []);
+          return;
+        }
+      } catch {}
+
+      if (active) {
+        setRoutePath([origin, destination]);
+      }
+    };
+
+    fetchRoute();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [userLocation, destinationCoords, routePath.length]);
+
+  useEffect(() => {
+    if (!mapReady || !mapContainerRef.current || !(window.google && window.google.maps)) return;
+
+    const maps = window.google.maps;
+
+    if (!mapRef.current) {
+      mapRef.current = new maps.Map(mapContainerRef.current, {
+        center: { lat: userLocation[0], lng: userLocation[1] },
+        zoom: 18,
+        mapTypeId: "roadmap",
+        streetViewControl: false,
+        fullscreenControl: false,
+      });
+    }
+
+    const map = mapRef.current;
+    const userPos = { lat: userLocation[0], lng: userLocation[1] };
+    const destPos = { lat: destinationCoords[0], lng: destinationCoords[1] };
+
+    if (!userMarkerRef.current) {
+      userMarkerRef.current = new maps.Marker({
+        map,
+        position: userPos,
+        title: "Your Location",
+        label: { text: "U", color: "#ffffff", fontWeight: "700" },
+        icon: {
+          path: maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: "#0ea5e9",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+      });
+    } else {
+      userMarkerRef.current.setPosition(userPos);
+    }
+
+    if (!destinationMarkerRef.current) {
+      destinationMarkerRef.current = new maps.Marker({
+        map,
+        position: destPos,
+        title: "Destination",
+        label: { text: "D", color: "#ffffff", fontWeight: "700" },
+        icon: {
+          path: maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: "#f59e0b",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+      });
+    } else {
+      destinationMarkerRef.current.setPosition(destPos);
+    }
+
+    const dottedLineSymbol = { path: "M 0,-1 0,1", strokeOpacity: 1, strokeWeight: 4, scale: 4, strokeColor: "#ff2d55" };
+
+    if (!routeLineRef.current) {
+      routeLineRef.current = new maps.Polyline({
+        map,
+        path: [userPos, destPos],
+        strokeOpacity: 0,
+        icons: [{ icon: dottedLineSymbol, offset: "0", repeat: "16px" }],
+      });
+    } else {
+      routeLineRef.current.setMap(map);
+    }
+
+    const path = routePath.length > 1 ? routePath : [userPos, destPos];
+    routeLineRef.current.setPath(path);
+
+    const bounds = new maps.LatLngBounds();
+    path.forEach((point) => bounds.extend(point));
+    map.fitBounds(bounds, 90);
+  }, [mapReady, userLocation, destinationCoords, routePath]);
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-100 dark:bg-[#0A1A2F] text-slate-900 dark:text-white font-sans relative transition-colors duration-300">
-      
-      {/* FLOATING ACTION BAR (Top Right)
-        Contains Theme Toggle and Back Button 
-      */}
       <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
         <button
           onClick={() => setThemeMode((p) => (p === "light" ? "dark" : "light"))}
@@ -198,15 +422,12 @@ export default function MapPage() {
         </button>
       </div>
 
-      {/* LEFT SIDEBAR
-        Given a modern panel look with a shadow to lift it off the map 
-      */}
       <div className="z-40 h-full w-full sm:w-[400px] lg:w-[450px] shrink-0 border-r border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A1A2F]/95 backdrop-blur-xl shadow-2xl flex flex-col transition-colors duration-300">
         <Sidebar
           onSearch={handleSearch}
           flightData={flightData}
           onNavigatePoi={handleNavigate}
-          onSidebarHoverChange={setDisableMapWheelZoom}
+          onSidebarHoverChange={() => {}}
           language={language}
           setLanguage={setLanguage}
           navigationSteps={navigationSteps}
@@ -221,21 +442,23 @@ export default function MapPage() {
         />
       </div>
 
-      {/* MAP CONTAINER
-        Takes up the remaining flexible space. 
-      */}
       <div className="relative flex-1 h-full z-10 bg-slate-200 dark:bg-[#050e1a]">
-        <MapComponent
-          pois={filteredPois}
-          selectedPoI={selectedPoI}
-          userLocation={userLocation}
-          routePolyline={routePolyline}
-          onNavigate={handleNavigate}
-          disableWheelZoom={disableMapWheelZoom}
-        />
-        
-        {/* Subtle Map Inner Shadow for depth */}
-        <div className="absolute inset-0 pointer-events-none shadow-[inset_10px_0_30px_rgba(0,0,0,0.1)] dark:shadow-[inset_10px_0_40px_rgba(0,0,0,0.4)] z-20"></div>
+        {mapError ? (
+          <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm font-semibold text-slate-700 dark:text-slate-200">
+            Google Maps could not load. Set `VITE_GOOGLE_MAPS_API_KEY` in `frontend/.env`.
+          </div>
+        ) : (
+          <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
+        )}
+
+        <div className="absolute bottom-6 left-6 pointer-events-none z-[10]">
+          <div className="flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-black/60 backdrop-blur-md px-4 py-2 shadow-lg">
+            <div className={`h-2 w-2 rounded-full animate-pulse ${mapReady ? "bg-green-500" : "bg-orange-500"}`}></div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-white">
+              {mapReady ? "Google Maps Live" : "Loading Map..."}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

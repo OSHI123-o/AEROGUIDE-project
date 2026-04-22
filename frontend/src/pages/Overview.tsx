@@ -50,7 +50,7 @@ export default function Overview() {
 
   return (
     <div style={{ minHeight: "100vh", background: theme.bg, padding: 20 }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto", display: "grid", gap: 16 }}>
+      <div style={{ width: "100%", display: "grid", gap: 16 }}>
         <header style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 30, color: theme.text }}>Overview</h1>

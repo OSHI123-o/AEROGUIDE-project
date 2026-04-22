@@ -223,3 +223,33 @@ export async function findFlights(pnr: string, lastName: string) {
 
   return flights.filter((f) => f.pnr === pnr && f.lastName === lastName);
 }
+
+export async function suggestPassengers(queryText: string): Promise<{ pnr: string; lastName: string }[]> {
+  const env = getEnvConfig();
+  if (env.useSupabase) {
+    try {
+      const supabase = getSupabaseAdmin();
+      const { data, error } = await supabase
+        .from(env.supabasePassengersTable)
+        .select("pnr, last_name")
+        .or(`pnr.ilike.%${queryText}%,last_name.ilike.%${queryText}%`)
+        .limit(5);
+
+      if (!error && data) {
+        return data.map((row) => ({
+          pnr: rowValue(row, "pnr", "pnr"),
+          lastName: rowValue(row, "lastName", "last_name"),
+        }));
+      }
+    } catch {
+      // Fall back to demo data when Supabase is unreachable/misconfigured.
+    }
+  }
+
+  const upperQuery = queryText.toUpperCase();
+  const matches = passengers.filter(
+    (p) => p.pnr.includes(upperQuery) || p.lastName.includes(upperQuery)
+  );
+  
+  return matches.slice(0, 5).map((p) => ({ pnr: p.pnr, lastName: p.lastName }));
+}

@@ -155,21 +155,15 @@ export default function BoardingPassPage() {
     [details.seat, flight.flightNo, flight.gate, flight.pnr]
   );
 
-  const shellBg = isDark
-    ? "linear-gradient(180deg, #071120 0%, #0b1730 35%, #122240 100%)"
-    : "linear-gradient(180deg, #d9edff 0%, #cfe7ff 35%, #bddcff 100%)";
-  const panelBg = isDark
-    ? "linear-gradient(180deg, rgba(15,23,42,0.82) 0%, rgba(19,36,63,0.86) 100%)"
-    : "linear-gradient(180deg, rgba(255,255,255,0.62) 0%, rgba(228,240,255,0.7) 30%, rgba(212,231,255,0.86) 100%)";
-  const heroBg = isDark
-    ? "linear-gradient(180deg, rgba(15,23,42,0.74), rgba(15,23,42,0.5))"
-    : "linear-gradient(180deg, rgba(230,243,255,0.56), rgba(214,232,255,0.32))";
+  const shellBg = isDark ? "#091530" : "#f8fafc";
+  const panelBg = isDark ? "#112143" : "#ffffff";
+  const heroBg = panelBg;
+  const chipBg = isDark ? "#1a2e5c" : "#f1f5f9";
   const textMain = isDark ? "#f8fafc" : "#0f172a";
-  const textSoft = isDark ? "rgba(226,232,240,0.72)" : "rgba(15,23,42,0.66)";
-  const textMuted = isDark ? "rgba(226,232,240,0.56)" : "rgba(15,23,42,0.48)";
-  const borderSoft = isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.6)";
-  const chipBg = isDark ? "rgba(15,23,42,0.55)" : "rgba(255,255,255,0.7)";
-  const buttonSecondaryBg = isDark ? "rgba(15,23,42,0.76)" : "rgba(255,255,255,0.72)";
+  const textSoft = isDark ? "#94a3b8" : "#475569";
+  const textMuted = isDark ? "#64748b" : "#64748b";
+  const borderSoft = isDark ? "1px solid #1a2e5c" : "1px solid #e2e8f0";
+  const buttonSecondaryBg = chipBg;
 
   return (
     <div
@@ -210,30 +204,16 @@ export default function BoardingPassPage() {
         }
       `}</style>
 
-      <img
-        src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1800&q=80"
-        alt=""
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          opacity: isDark ? 0.08 : 0.16,
-          pointerEvents: "none",
-        }}
-      />
-
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: isDark
-            ? "radial-gradient(circle at 12% 12%, rgba(59,130,246,0.18) 0%, rgba(59,130,246,0.04) 18%, transparent 30%), radial-gradient(circle at 86% 18%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 18%, transparent 34%)"
-            : "radial-gradient(circle at 12% 12%, rgba(73,150,255,0.35) 0%, rgba(73,150,255,0.08) 18%, transparent 30%), radial-gradient(circle at 86% 18%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.06) 18%, transparent 34%)",
-          pointerEvents: "none",
-        }}
+      {/* Dashboard-style subtle grid overlay */}
+      <div 
+        className="absolute inset-0 z-0 pointer-events-none"
+        style={isDark ? {
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: '32px 32px'
+        } : {}}
       />
 
       <div
@@ -329,72 +309,55 @@ export default function BoardingPassPage() {
               </div>
             </div>
 
-            <div className="boarding-hero-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(220px, 0.8fr)", gap: 16 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* Box 1: Journey Overview */}
               <div style={{ borderRadius: 28, padding: "22px", background: chipBg, border: borderSoft, backdropFilter: "blur(10px)" }}>
                 <div style={{ color: textMuted, fontSize: 12, fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase" }}>
                   AeroGuide Journey
                 </div>
                 <h1 style={{ margin: "12px 0 0", fontSize: "clamp(2rem, 4vw, 3.7rem)", lineHeight: 0.98, color: textMain, fontWeight: 900 }}>
                   Travel status
-                  <br />
-                  before boarding
                 </h1>
-                <p style={{ margin: "16px 0 0", maxWidth: 520, color: textSoft, fontSize: 15, lineHeight: 1.65 }}>
-                  The boarding pass stays on the right. This side now follows the active theme and stays in sync with the rest of the app.
-                </p>
-
-                <div style={{ marginTop: 22, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+                <div style={{ marginTop: 22, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
                   <InfoCard label="Route" value={`${flight.originCode} to ${flight.destinationCode}`} isDark={isDark} />
                   <InfoCard label="Boarding" value={formatClock(details.boardingTime)} isDark={isDark} />
                   <InfoCard label="Passenger" value={titleCase((passengerSession?.lastName || flight.lastName).slice(0, 12))} isDark={isDark} />
+                  <InfoCard label="Status" value={flight.status} isDark={isDark} />
+                  <InfoCard label="Terminal" value={flight.terminal} isDark={isDark} />
+                  <InfoCard label="PNR" value={flight.pnr} isDark={isDark} />
                 </div>
               </div>
 
-              <div style={{ borderRadius: 28, padding: "18px", background: isDark ? "rgba(15,23,42,0.82)" : "rgba(15,23,42,0.82)", border: borderSoft, color: "#eff6ff" }}>
-                <div style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(219,234,254,0.64)" }}>Next Step</div>
-                <div style={{ marginTop: 10, fontSize: 24, fontWeight: 800, lineHeight: 1.05 }}>
-                  Proceed through
-                  <br />
-                  Terminal {flight.terminal}
-                </div>
-                <div style={{ marginTop: 10, color: "rgba(226,232,240,0.76)", fontSize: 14, lineHeight: 1.5 }}>
-                  Use airport signs and keep moving toward gate {flight.gate} before the boarding window opens.
-                </div>
-              </div>
-            </div>
-
-            <div className="boarding-content-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.08fr) minmax(0, 0.92fr)", gap: 14 }}>
-              <div style={{ borderRadius: 26, overflow: "hidden", minHeight: 228, position: "relative", boxShadow: isDark ? "0 18px 40px rgba(2,6,23,0.24)" : "0 18px 40px rgba(66,104,152,0.16)" }}>
-                <img
-                  src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1400&q=80"
-                  alt="Airplane at airport"
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                />
-                <div style={{ position: "absolute", inset: 0, background: isDark ? "linear-gradient(180deg, rgba(2,6,23,0.2), rgba(2,6,23,0.82))" : "linear-gradient(180deg, rgba(15,23,42,0.08), rgba(15,23,42,0.72))" }} />
-                <div style={{ position: "absolute", left: 18, right: 18, bottom: 18, color: "#eff6ff" }}>
-                  <div style={{ fontSize: 13, opacity: 0.82 }}>Airport Guidance</div>
-                  <div style={{ marginTop: 4, fontSize: 24, fontWeight: 800 }}>Move from terminal entry to gate with less confusion</div>
-                </div>
-              </div>
-
-              <div style={{ borderRadius: 26, padding: "18px", background: chipBg, border: borderSoft, display: "grid", gap: 14 }}>
-                <div style={{ color: textMuted, fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>Airport Checklist</div>
-                {[
-                  `Passport and PNR ${flight.pnr} should stay ready for inspection.`,
-                  `Confirm terminal ${flight.terminal} and recheck gate ${flight.gate} on airport displays.`,
-                  `Reach the boarding area before ${formatClock(details.boardingTime)}.`,
-                ].map((item) => (
-                  <div key={item} style={{ borderRadius: 18, padding: "12px 14px", background: isDark ? "rgba(15,23,42,0.45)" : "rgba(255,255,255,0.58)", color: textSoft }}>
-                    {item}
+              <div className="boarding-content-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 16 }}>
+                {/* Box 2: Next Step */}
+                <div style={{ borderRadius: 28, padding: "22px", background: isDark ? "rgba(15,23,42,0.82)" : "rgba(15,23,42,0.82)", border: borderSoft, color: "#eff6ff", display: "flex", flexDirection: "column" }}>
+                  <div style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(219,234,254,0.64)" }}>Next Step</div>
+                  <div style={{ marginTop: 12, fontSize: 26, fontWeight: 800, lineHeight: 1.1 }}>
+                    Proceed through
+                    <br />
+                    Terminal {flight.terminal}
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div style={{ marginTop: "auto", paddingTop: 16, color: "rgba(226,232,240,0.76)", fontSize: 14, lineHeight: 1.5 }}>
+                    Use airport signs and keep moving toward gate {flight.gate} before the boarding window opens.
+                  </div>
+                </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-              <InfoCard label="Status" value={flight.status} isDark={isDark} />
-              <InfoCard label="Terminal" value={flight.terminal} isDark={isDark} />
-              <InfoCard label="PNR" value={flight.pnr} isDark={isDark} />
+                {/* Box 3: Airport Checklist */}
+                <div style={{ borderRadius: 28, padding: "22px", background: chipBg, border: borderSoft, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ color: textMuted, fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>Airport Checklist</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, justifyItems: "center" }}>
+                    {[
+                      `Passport and PNR ${flight.pnr} should stay ready for inspection.`,
+                      `Confirm terminal ${flight.terminal} and recheck gate ${flight.gate}.`,
+                      `Reach boarding area before ${formatClock(details.boardingTime)}.`,
+                    ].map((item) => (
+                      <div key={item} style={{ borderRadius: 18, padding: "10px 14px", background: isDark ? "rgba(15,23,42,0.45)" : "rgba(255,255,255,0.58)", color: textSoft, fontSize: 13, fontWeight: 500 }}>
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>

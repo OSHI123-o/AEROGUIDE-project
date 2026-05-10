@@ -10,6 +10,7 @@ type SpeechOptions = {
   pitch?: number;
   lang?: string;
   volume?: number;
+  queue?: boolean;
 };
 
 type SpeechRecognitionCtor = new () => SpeechRecognition;
@@ -46,20 +47,98 @@ export function supportsSpeechRecognition() {
   return typeof window !== "undefined" && getSpeechRecognitionCtor() !== null;
 }
 
+let googleTTSQueue: string[] = [];
+let currentAudioQueue: HTMLAudioElement[] = [];
+let isGoogleTTSPlaying = false;
+
 export function stopSpeaking() {
   if (supportsSpeechSynthesis()) {
     window.speechSynthesis.cancel();
   }
+  googleTTSQueue = [];
+  currentAudioQueue.forEach(a => {
+    a.pause();
+    a.src = "";
+  });
+  currentAudioQueue = [];
+  isGoogleTTSPlaying = false;
+}
+
+async function processGoogleTTSQueue() {
+  if (isGoogleTTSPlaying || googleTTSQueue.length === 0) return;
+  isGoogleTTSPlaying = true;
+  
+  while (googleTTSQueue.length > 0) {
+    const url = googleTTSQueue.shift();
+    if (!url) continue;
+    
+    const audio = new Audio(url);
+    currentAudioQueue = [audio];
+    
+    await new Promise<void>(resolve => {
+      audio.onended = () => resolve();
+      audio.onerror = () => resolve();
+      audio.play().catch(() => resolve());
+    });
+  }
+  
+  currentAudioQueue = [];
+  isGoogleTTSPlaying = false;
+}
+
+function speakWithGoogleTTS(text: string, lang: string, queue: boolean) {
+  if (!queue) {
+    stopSpeaking();
+  }
+  
+  const chunks = text.match(/[^.!?]+[.!?]+/g) || [text];
+  for (const chunk of chunks) {
+    if (!chunk.trim()) continue;
+    let subChunks = [];
+    if (chunk.length > 180) {
+      const words = chunk.split(' ');
+      let current = '';
+      for (const word of words) {
+        if (current.length + word.length > 160) {
+          subChunks.push(current);
+          current = word + ' ';
+        } else {
+          current += word + ' ';
+        }
+      }
+      if (current) subChunks.push(current);
+    } else {
+      subChunks = [chunk];
+    }
+
+    for (const sub of subChunks) {
+      if (!sub.trim()) continue;
+      const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodeURIComponent(sub.trim())}`;
+      googleTTSQueue.push(url);
+    }
+  }
+  
+  processGoogleTTSQueue();
 }
 
 export function speakText(text: string, options: SpeechOptions = {}) {
-  if (!text || !supportsSpeechSynthesis()) return;
+  if (!text) return;
+
+  const langKey = options.lang?.split('-')[0] || "en";
+  if (["si", "hi", "zh", "ar"].includes(langKey)) {
+    speakWithGoogleTTS(text, langKey, !!options.queue);
+    return;
+  }
+
+  if (!supportsSpeechSynthesis()) return;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = options.rate ?? 1;
   utterance.pitch = options.pitch ?? 1;
   utterance.lang = options.lang ?? "en-US";
   utterance.volume = options.volume ?? 1;
-  window.speechSynthesis.cancel();
+  if (!options.queue) {
+    stopSpeaking();
+  }
   window.speechSynthesis.speak(utterance);
 }
 

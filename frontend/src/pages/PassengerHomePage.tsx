@@ -155,11 +155,11 @@ export default function PassengerHomePage() {
 
   const isDark = themeMode === "dark";
 
-  const panel = isDark ? "rgba(15,23,42,0.62)" : "rgba(255,255,255,0.72)";
-  const border = isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.72)";
+  const panel = isDark ? "rgba(0,0,0,0.2)" : "#ffffff";
+  const border = isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid #e2e8f0";
   const text = isDark ? "#f8fafc" : "#0f172a";
-  const muted = isDark ? "rgba(226,232,240,0.68)" : "rgba(15,23,42,0.58)";
-  const soft = isDark ? "rgba(226,232,240,0.52)" : "rgba(15,23,42,0.44)";
+  const muted = isDark ? "rgba(255,255,255,0.7)" : "#64748b"; // slate-400 / slate-500
+  const soft = isDark ? "rgba(255,255,255,0.5)" : "#94a3b8";
   const displayFont = '"Bahnschrift", "Aptos Display", "Segoe UI", sans-serif';
   const bodyFont = '"Aptos", "Segoe UI", "Helvetica Neue", Arial, sans-serif';
 
@@ -170,7 +170,7 @@ export default function PassengerHomePage() {
       : "Passenger";
 
   return (
-    <div className={`min-h-[100vh] ${isDark ? "bg-[#081120] text-slate-100" : "bg-[#f3ecff] text-slate-900"}`} style={{ position: "relative", overflow: "hidden", fontFamily: bodyFont }}>
+    <div className={`min-h-[100vh] transition-colors duration-300 ${isDark ? "bg-gradient-to-br from-[#0B1021] via-[#1B2845] to-[#5A77A2] text-slate-100" : "bg-gradient-to-r from-[#2C6CBC] via-[#71C3F7] to-[#F5F5F5] text-slate-900"}`} style={{ position: "relative", overflow: "hidden", fontFamily: bodyFont }}>
       <style>{`
         @media (max-width: 980px) {
           .passenger-grid {
@@ -189,18 +189,16 @@ export default function PassengerHomePage() {
         }
       `}</style>
 
-      <div className={`absolute inset-0 z-0 pointer-events-none ${isDark ? "bg-[radial-gradient(circle_at_top,#1d2f57_0%,#0b1630_38%,#091120_80%)]" : "bg-[radial-gradient(circle_at_top,#d5c2ff_0%,#efe6ff_38%,#f8f5ff_80%)]"}`} />
-      <div
-        className={`absolute inset-0 z-0 pointer-events-none ${isDark ? "opacity-[0.08]" : "opacity-[0.12]"}`}
-        style={{
-          backgroundImage: "url('https://i.pinimg.com/1200x/aa/e4/54/aae454df5a468ca876f6912d496b1b61.jpg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center top",
-        }}
+      <div 
+        className="absolute inset-0 z-0 pointer-events-none"
+        style={isDark ? {
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: '32px 32px'
+        } : {}}
       />
-      <div className={`absolute inset-0 z-0 pointer-events-none ${isDark ? "bg-[linear-gradient(180deg,rgba(4,10,22,0.48),rgba(4,10,22,0.72))]" : "bg-[linear-gradient(180deg,rgba(255,255,255,0.5),rgba(255,255,255,0.72))]"}`} />
-      <div className={`absolute -left-20 top-20 h-64 w-64 rounded-full blur-3xl z-0 pointer-events-none ${isDark ? "bg-[#243b67]/35" : "bg-white/35"}`} />
-      <div className={`absolute right-0 top-0 h-80 w-80 rounded-full blur-3xl z-0 pointer-events-none ${isDark ? "bg-[#3c2d66]/35" : "bg-[#d7c2ff]/45"}`} />
 
       <div style={{ width: "100%", padding: 24, position: "relative", zIndex: 1, display: "grid", gap: 18 }}>
         <header

@@ -4,7 +4,7 @@ import { getStoredLang, setStoredLang, type AppLang } from '../services/i18n';
 import { setAuthenticated } from '../services/authSession';
 import { supabase } from '../lib/supabaseClient';
 
-type Language = AppLang;
+
 type LoginApiResponse = {
   message: string;
   user?: {
@@ -29,7 +29,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [language, setLanguage] = useState<Language>(() => getStoredLang());
+  const [language] = useState<AppLang>(() => getStoredLang());
 
   const [errors, setErrors] = useState({ email: '', password: '' });
   const [loginError, setLoginError] = useState('');
@@ -234,7 +234,7 @@ export default function Login() {
       {/* Header */}
       <div className="relative mx-auto mb-12 flex w-full max-w-7xl items-center justify-between z-10">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#d7ad58] shadow-[0_10px_30px_rgba(215,173,88,0.2)]">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#589efc] shadow-[0_10px_30px_rgba(88,158,252,0.2)]">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -303,7 +303,7 @@ export default function Login() {
                   className={`w-full rounded-xl border px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-slate-500 ${
                     errors.email
                       ? 'border-red-400/50 bg-red-500/5 focus:border-red-400'
-                      : 'border-white/10 bg-white/5 focus:border-[#d7ad58] focus:bg-white/10'
+                      : 'border-white/10 bg-white/5 focus:border-[#589efc] focus:bg-white/10'
                   }`}
                   placeholder="name@example.com"
                 />
@@ -324,7 +324,7 @@ export default function Login() {
                     className={`w-full rounded-xl border px-4 py-3.5 pr-16 text-sm text-white outline-none transition placeholder:text-slate-500 ${
                       errors.password
                         ? 'border-red-400/50 bg-red-500/5 focus:border-red-400'
-                        : 'border-white/10 bg-white/5 focus:border-[#d7ad58] focus:bg-white/10'
+                        : 'border-white/10 bg-white/5 focus:border-[#589efc] focus:bg-white/10'
                     }`}
                     placeholder="••••••••••••"
                   />
@@ -345,7 +345,7 @@ export default function Login() {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={() => setRememberMe(!rememberMe)}
-                    className="h-4 w-4 rounded border-white/20 bg-white/10 text-[#d7ad58] focus:ring-[#d7ad58] focus:ring-offset-0"
+                    className="h-4 w-4 rounded border-white/20 bg-white/10 text-[#589efc] focus:ring-[#589efc] focus:ring-offset-0"
                   />
                   <span className="text-sm font-medium text-slate-300">Remember me</span>
                 </label>
@@ -353,7 +353,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => navigate('/forgot-password')}
-                  className="text-sm font-semibold text-[#d7ad58] hover:text-slate-200 transition"
+                  className="text-sm font-semibold text-[#589efc] hover:text-slate-200 transition"
                 >
                   Forgot Password?
                 </button>
@@ -364,7 +364,7 @@ export default function Login() {
                 disabled={!isFormValid || isLoading}
                 className={`mt-4 w-full rounded-xl px-4 py-4 text-sm font-bold tracking-wide transition-all ${
                   isFormValid && !isLoading
-                    ? 'bg-[#d7ad58] text-[#0A1A2F] shadow-[0_4px_14px_rgba(215,173,88,0.25)] hover:bg-[#c79a44]'
+                    ? 'bg-[#589efc] text-[#0A1A2F] shadow-[0_4px_14px_rgba(88,158,252,0.25)] hover:bg-[#4a8be8]'
                     : 'cursor-not-allowed bg-white/5 border border-white/10 text-slate-500' // Fixed the ugly light grey disabled button
                 }`}
               >
@@ -398,7 +398,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => navigate('/signup')}
-                  className="font-bold text-[#d7ad58] hover:text-slate-200 transition"
+                  className="font-bold text-[#589efc] hover:text-slate-200 transition"
                 >
                   Sign Up
                 </button>

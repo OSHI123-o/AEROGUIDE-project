@@ -404,12 +404,12 @@ export default function MapPage() {
   }, [mapReady, userLocation, destinationCoords, routePath]);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-100 dark:bg-[#0A1A2F] text-slate-900 dark:text-white font-sans relative transition-colors duration-300">
+    <div className="flex h-screen w-full overflow-hidden bg-gradient-to-r from-[#2C6CBC] via-[#71C3F7] to-[#F5F5F5] dark:from-[#0B1021] dark:via-[#1B2845] dark:to-[#5A77A2] text-slate-900 dark:text-white font-sans relative transition-colors duration-300">
       <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
         <button
           onClick={() => setThemeMode((p) => (p === "light" ? "dark" : "light"))}
           aria-label="Toggle theme"
-          className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 dark:border-white/20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-700 dark:text-white shadow-lg hover:bg-white dark:hover:bg-slate-800 transition-all"
+          className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 dark:border-white/20 bg-white/80 dark:bg-black/20 backdrop-blur-md text-slate-700 dark:text-white shadow-lg hover:bg-white dark:hover:bg-white/10 transition-all"
         >
           <ThemeModeIcon mode={themeMode} />
         </button>
@@ -422,7 +422,7 @@ export default function MapPage() {
         </button>
       </div>
 
-      <div className="z-40 h-full w-full sm:w-[400px] lg:w-[450px] shrink-0 border-r border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A1A2F]/95 backdrop-blur-xl shadow-2xl flex flex-col transition-colors duration-300">
+      <div className="z-40 h-full w-full sm:w-[400px] lg:w-[450px] shrink-0 bg-transparent dark:bg-transparent backdrop-blur-xl shadow-2xl flex flex-col transition-colors duration-300">
         <Sidebar
           onSearch={handleSearch}
           flightData={flightData}
@@ -442,7 +442,7 @@ export default function MapPage() {
         />
       </div>
 
-      <div className="relative flex-1 h-full z-10 bg-slate-200 dark:bg-[#050e1a]">
+      <div className="relative flex-1 h-full z-10 bg-slate-200 dark:bg-black/20">
         {mapError ? (
           <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm font-semibold text-slate-700 dark:text-slate-200">
             Google Maps could not load. Set `VITE_GOOGLE_MAPS_API_KEY` in `frontend/.env`.
@@ -453,7 +453,7 @@ export default function MapPage() {
 
         <div className="absolute bottom-6 left-6 pointer-events-none z-[10]">
           <div className="flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-black/60 backdrop-blur-md px-4 py-2 shadow-lg">
-            <div className={`h-2 w-2 rounded-full animate-pulse ${mapReady ? "bg-green-500" : "bg-orange-500"}`}></div>
+            <div className={`h-2 w-2 rounded-full animate-pulse ${mapReady ? "bg-green-500" : "bg-[#589efc]"}`}></div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-white">
               {mapReady ? "Google Maps Live" : "Loading Map..."}
             </span>

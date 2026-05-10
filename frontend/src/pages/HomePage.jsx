@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { flights, pois } from "../mockData";
 import { getCategoryMeta } from "../poiCatalog";
 import ScanBoardingPass from "../components/ScanBoardingPass";
-
+import GlobeComponent from "../components/GlobeComponent";
 
 const heroImages = [
   "https://images.unsplash.com/photo-1464037866556-6812c9d1c72e?w=1400&auto=format&fit=crop&q=80",
@@ -98,13 +98,11 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="homeMosaic">
-          {heroImages.map((image, index) => (
-            <div key={image} className={`homeMosaicTile homeMosaicTile${index + 1}`} style={{ backgroundImage: `url(${image})` }} />
-          ))}
-          <div className="homeMosaicBadge">
-            <span>Live indoor wayfinding</span>
-            <strong>Zoom + Route + Instructions</strong>
+        <div className="homeGlobeContainer" style={{ position: 'relative', width: '100%', height: '100%', minHeight: '400px', display: 'flex', alignItems: 'center', justifyItems: 'center' }}>
+          <GlobeComponent />
+          <div className="homeMosaicBadge" style={{ position: 'absolute', bottom: "2rem", right: "2rem", zIndex: 10, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(148, 163, 184, 0.2)', padding: '1.25rem', borderRadius: '1rem', color: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '0.25rem', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
+            <span style={{ fontSize: '0.85rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>Global Connectivity</span>
+            <strong style={{ fontSize: '1.2rem', fontWeight: 900 }}>Interactive 3D Flight Map</strong>
           </div>
         </div>
       </section>

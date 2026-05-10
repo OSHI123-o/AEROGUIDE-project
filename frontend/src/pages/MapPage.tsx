@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import ThemeModeIcon from "../components/ThemeModeIcon";
 
@@ -75,7 +75,7 @@ export default function MapPage() {
   }, [startCoord, endCoord]);
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 dark:bg-aeroguide-navy text-slate-900 dark:text-white font-sans transition-colors duration-300">
+    <div className="flex flex-col h-screen bg-gradient-to-r from-[#2C6CBC] via-[#71C3F7] to-[#F5F5F5] dark:from-[#0B1021] dark:via-[#1B2845] dark:to-[#5A77A2] text-slate-900 dark:text-white font-sans transition-colors duration-300">
       <header className="flex-none p-4 sm:p-6 lg:px-10 z-10 bg-white/80 dark:bg-aeroguide-navy/80 backdrop-blur-md shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black tracking-tight">Interactive Map</h1>
@@ -101,7 +101,7 @@ export default function MapPage() {
         />
         <div className="absolute bottom-6 left-6 pointer-events-none z-[10]">
           <div className="flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-black/60 backdrop-blur-md px-4 py-2 shadow-lg">
-            <div className={`h-2 w-2 rounded-full animate-pulse ${liveCoords ? 'bg-green-500' : 'bg-orange-500'}`}></div>
+            <div className={`h-2 w-2 rounded-full animate-pulse ${liveCoords ? 'bg-green-500' : 'bg-[#589efc]'}`}></div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-white">
               {liveCoords ? 'Live GPS Active' : 'Acquiring GPS...'}
             </span>

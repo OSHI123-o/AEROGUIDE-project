@@ -132,13 +132,13 @@ export default function Sidebar({
 
   return (
     <div
-      className="glass-panel"
+      className="glass-panel scrollbar-hide"
       onMouseEnter={() => onSidebarHoverChange?.(true)}
       onMouseLeave={() => onSidebarHoverChange?.(false)}
       onTouchStart={() => onSidebarHoverChange?.(true)}
       onTouchEnd={() => onSidebarHoverChange?.(false)}
       style={{
-        width: "var(--panel-width)",
+        width: "100%",
         height: "100%",
         padding: "1.25rem",
         boxSizing: "border-box",
@@ -150,7 +150,6 @@ export default function Sidebar({
         overflowY: "auto",
         background:
           "linear-gradient(180deg, rgba(7,22,46,0.96) 0%, rgba(8,29,58,0.94) 55%, rgba(7,22,46,0.98) 100%)",
-        borderRight: "1px solid rgba(148,163,184,0.2)",
         boxShadow: "0 20px 40px rgba(2,6,23,0.28)",
         backdropFilter: "blur(14px)",
       }}

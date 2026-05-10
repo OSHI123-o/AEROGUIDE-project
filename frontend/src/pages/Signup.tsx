@@ -185,23 +185,33 @@ export default function Signup() {
 
   return (
     <main
-      className="min-h-screen w-full flex relative overflow-hidden font-sans text-white"
+      className="min-h-screen w-full flex relative overflow-hidden font-sans text-slate-900 bg-gradient-to-r from-[#2C6CBC] via-[#71C3F7] to-[#F5F5F5]"
       aria-label="AEROGUIDE signup experience"
     >
-      <div
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage:
-            'url("https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2074&auto=format&fit=crop")',
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-aeroguide-navy/95 via-aeroguide-navy/85 to-aeroguide-navy/40 backdrop-blur-[2px]" />
+      {/* Dynamic Animated Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        {/* Animated Blobs */}
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-blob bg-blue-300/50"></div>
+        <div className="absolute top-[20%] right-[-10%] w-[600px] h-[600px] rounded-full mix-blend-multiply filter blur-[120px] opacity-60 animate-blob [animation-delay:2s] bg-aeroguide-pale/60"></div>
+        <div className="absolute bottom-[-20%] left-[20%] w-[550px] h-[550px] rounded-full mix-blend-multiply filter blur-[110px] opacity-60 animate-blob [animation-delay:4s] bg-indigo-300/40"></div>
+
+        {/* Universal Grid Pattern Overlay */}
+        <div 
+          className="absolute inset-0 opacity-60"
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)
+            `,
+            backgroundSize: '32px 32px'
+          }}
+        />
       </div>
 
       <div className="relative z-20 w-full">
         <header className="flex items-center justify-between px-6 lg:px-12 pt-6 lg:pt-8">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 lg:w-12 lg:h-12 bg-aeroguide-gold rounded-2xl flex items-center justify-center shadow-lg shadow-aeroguide-gold/25">
+            <div className="w-11 h-11 lg:w-12 lg:h-12 bg-aeroguide-blue rounded-2xl flex items-center justify-center shadow-lg shadow-aeroguide-blue/25">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -217,10 +227,10 @@ export default function Signup() {
               </svg>
             </div>
             <div className="flex flex-col">
-              <span className="text-xl lg:text-2xl font-extrabold tracking-[0.2em] text-white">
+              <span className="text-xl lg:text-2xl font-extrabold tracking-[0.2em] text-slate-900">
                 AEROGUIDE
               </span>
-              <span className="text-[10px] lg:text-xs uppercase tracking-[0.25em] text-slate-300/80">
+              <span className="text-[10px] lg:text-xs uppercase tracking-[0.25em] text-slate-600">
                 Smart airport navigation
               </span>
             </div>
@@ -238,9 +248,9 @@ export default function Signup() {
                   setLanguage(lang);
                   setStoredLang(lang);
                 }}
-                className={`px-2.5 lg:px-3.5 py-0.5 rounded-full text-[11px] lg:text-xs font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aeroguide-gold/80 focus-visible:ring-offset-2 focus-visible:ring-offset-aeroguide-navy ${
+                className={`px-2.5 lg:px-3.5 py-0.5 rounded-full text-[11px] lg:text-xs font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aeroguide-blue/80 focus-visible:ring-offset-2 focus-visible:ring-offset-aeroguide-navy ${
                   language === lang
-                    ? 'bg-aeroguide-gold text-aeroguide-navy shadow-lg shadow-aeroguide-gold/30'
+                    ? 'bg-aeroguide-blue text-aeroguide-navy shadow-lg shadow-aeroguide-blue/30'
                     : 'bg-white/5 text-slate-100 hover:bg-white/20'
                 }`}
                 aria-pressed={language === lang}
@@ -256,12 +266,12 @@ export default function Signup() {
             <h1 className="text-3.5xl md:text-4xl lg:text-5xl xl:text-6xl font-semibold lg:font-bold leading-tight tracking-tight">
               Create an account
               <br className="hidden md:block" />
-              <span className="block mt-2 text-aeroguide-gold">
+              <span className="block mt-2 text-aeroguide-blue">
                 and save your journeys.
               </span>
             </h1>
 
-            <p className="text-base md:text-lg text-slate-200/90 leading-relaxed">
+            <p className="text-base md:text-lg text-slate-700 leading-relaxed">
               Store traveler details, preferred language, and active trips in one secure
               profile. Seamless experiences every time you fly.
             </p>
@@ -275,11 +285,11 @@ export default function Signup() {
               <header className="mb-7">
                 <h2
                   id="signup-title"
-                  className="text-2xl md:text-2.5xl font-semibold md:font-bold text-white"
+                  className="text-2xl md:text-2.5xl font-semibold md:font-bold text-slate-900"
                 >
                   Join AEROGUIDE
                 </h2>
-                <p className="text-slate-300 text-xs md:text-sm mt-2">
+                <p className="text-slate-600 text-xs md:text-sm mt-2">
                   Set up your account in under a minute.
                 </p>
               </header>
@@ -310,7 +320,7 @@ export default function Signup() {
                       autoComplete="given-name"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-aeroguide-gold text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-aeroguide-gold transition-all text-sm"
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 focus:border-aeroguide-blue text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-aeroguide-blue transition-all text-sm"
                       placeholder="Nimal"
                     />
                     {errors.firstName && (
@@ -321,7 +331,7 @@ export default function Signup() {
                   <div className="space-y-1.5">
                     <label
                       htmlFor="lastName"
-                      className="block text-sm font-medium text-slate-200 ml-1"
+                      className="block text-sm font-medium text-slate-700 ml-1"
                     >
                       Last name
                     </label>
@@ -331,7 +341,7 @@ export default function Signup() {
                       autoComplete="family-name"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-aeroguide-gold text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-aeroguide-gold transition-all text-sm"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-aeroguide-blue text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-aeroguide-blue transition-all text-sm"
                       placeholder="Perera"
                     />
                     {errors.lastName && (
@@ -343,7 +353,7 @@ export default function Signup() {
                 <div className="space-y-1.5">
                   <label
                     htmlFor="signupEmail"
-                    className="block text-sm font-medium text-slate-200 ml-1"
+                    className="block text-sm font-medium text-slate-700 ml-1"
                   >
                     Email address
                   </label>
@@ -353,11 +363,11 @@ export default function Signup() {
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${
+                    className={`w-full px-4 py-3 rounded-xl bg-white border ${
                       errors.email
                         ? 'border-red-400 focus:border-red-400'
-                        : 'border-white/10 focus:border-aeroguide-gold'
-                    } text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-aeroguide-gold transition-all text-sm`}
+                        : 'border-slate-300 focus:border-aeroguide-blue'
+                    } text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-aeroguide-blue transition-all text-sm`}
                     placeholder="name@example.com"
                   />
                   {errors.email && (
@@ -368,7 +378,7 @@ export default function Signup() {
                 <div className="space-y-1.5">
                   <label
                     htmlFor="signupPassword"
-                    className="block text-sm font-medium text-slate-200 ml-1"
+                    className="block text-sm font-medium text-slate-700 ml-1"
                   >
                     Password
                   </label>
@@ -378,11 +388,11 @@ export default function Signup() {
                     autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${
+                    className={`w-full px-4 py-3 rounded-xl bg-white border ${
                       errors.password
                         ? 'border-red-400 focus:border-red-400'
-                        : 'border-white/10 focus:border-aeroguide-gold'
-                    } text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-aeroguide-gold transition-all text-sm`}
+                        : 'border-slate-300 focus:border-aeroguide-blue'
+                    } text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-aeroguide-blue transition-all text-sm`}
                     placeholder="At least 8 characters"
                   />
                   {errors.password && (
@@ -393,7 +403,7 @@ export default function Signup() {
                 <div className="space-y-1.5">
                   <label
                     htmlFor="signupConfirmPassword"
-                    className="block text-sm font-medium text-slate-200 ml-1"
+                    className="block text-sm font-medium text-slate-700 ml-1"
                   >
                     Confirm password
                   </label>
@@ -403,11 +413,11 @@ export default function Signup() {
                     autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${
+                    className={`w-full px-4 py-3 rounded-xl bg-white border ${
                       errors.confirmPassword
                         ? 'border-red-400 focus:border-red-400'
-                        : 'border-white/10 focus:border-aeroguide-gold'
-                    } text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-aeroguide-gold transition-all text-sm`}
+                        : 'border-slate-300 focus:border-aeroguide-blue'
+                    } text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-aeroguide-blue transition-all text-sm`}
                     placeholder="Re-enter your password"
                   />
                   {errors.confirmPassword && (
@@ -418,21 +428,21 @@ export default function Signup() {
                 <button
                   type="submit"
                   disabled={!isFormValid || isLoading}
-                  className={`w-full py-3.5 rounded-xl font-semibold md:font-bold text-base md:text-lg shadow-lg transition-all duration-300 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aeroguide-gold/80 focus-visible:ring-offset-2 focus-visible:ring-offset-aeroguide-navy ${
+                  className={`w-full py-3.5 rounded-xl font-semibold md:font-bold text-base md:text-lg shadow-lg transition-all duration-300 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2C6CBC]/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
                     isFormValid && !isLoading
-                      ? 'bg-aeroguide-gold text-aeroguide-navy hover:bg-yellow-400 hover:shadow-aeroguide-gold/40 hover:-translate-y-0.5'
-                      : 'bg-slate-600/60 text-slate-400 cursor-not-allowed'
+                      ? 'bg-gradient-to-r from-[#2C6CBC] via-[#71C3F7] to-[#F5F5F5] text-slate-900 hover:brightness-95 hover:-translate-y-0.5'
+                      : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'
                   }`}
                 >
                   {isLoading ? 'Creating account...' : 'Create account'}
                 </button>
 
-                <p className="text-center mt-3 text-slate-300 text-xs md:text-sm">
+                <p className="text-center mt-3 text-slate-600 text-xs md:text-sm">
                   Already have an account?{' '}
                   <button
                     type="button"
                     onClick={() => navigate('/login')}
-                    className="text-aeroguide-gold font-semibold hover:underline"
+                    className="text-aeroguide-blue font-semibold hover:underline"
                   >
                     Back to sign in
                   </button>

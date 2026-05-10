@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ThemeModeIcon from "../components/ThemeModeIcon";
 
@@ -108,7 +108,7 @@ function getAirportMeta(code: string) {
 
 function getStatusPill(status: string) {
   if (status === "On Ground") return "bg-slate-100 text-slate-600";
-  if (status.includes("Approaching") || status.includes("Departing")) return "bg-amber-100 text-amber-700";
+  if (status.includes("Approaching") || status.includes("Departing")) return "bg-[#e6f4fd] text-[#308cd6]";
   return "bg-emerald-100 text-emerald-700";
 }
 
@@ -207,9 +207,9 @@ export default function FlightsPage() {
   const isDark = themeMode === "dark";
 
   return (
-    <div className={`min-h-screen ${isDark ? "bg-[#081120] text-slate-100" : "bg-[#f3ecff] text-slate-900"}`}>
+    <div className={`min-h-screen ${isDark ? "bg-gradient-to-br from-[#0B1021] via-[#1B2845] to-[#5A77A2] text-slate-100" : "bg-gradient-to-r from-[#2C6CBC] via-[#71C3F7] to-[#F5F5F5] text-slate-900"}`}>
       <div className="relative overflow-hidden">
-        <div className={`absolute inset-0 ${isDark ? "bg-[radial-gradient(circle_at_top,#1d2f57_0%,#0b1630_38%,#091120_80%)]" : "bg-[radial-gradient(circle_at_top,#d5c2ff_0%,#efe6ff_38%,#f8f5ff_80%)]"}`} />
+        <div className="absolute inset-0 opacity-0" />
         <div
           className={`absolute inset-0 ${isDark ? "opacity-[0.08]" : "opacity-[0.12]"}`}
           style={{
@@ -218,12 +218,12 @@ export default function FlightsPage() {
             backgroundPosition: "center top",
           }}
         />
-        <div className={`absolute inset-0 ${isDark ? "bg-[linear-gradient(180deg,rgba(4,10,22,0.48),rgba(4,10,22,0.72))]" : "bg-[linear-gradient(180deg,rgba(255,255,255,0.5),rgba(255,255,255,0.72))]"}`} />
-        <div className={`absolute -left-20 top-20 h-64 w-64 rounded-full blur-3xl ${isDark ? "bg-[#243b67]/35" : "bg-white/35"}`} />
-        <div className={`absolute right-0 top-0 h-80 w-80 rounded-full blur-3xl ${isDark ? "bg-[#3c2d66]/35" : "bg-[#d7c2ff]/45"}`} />
+        <div className={`absolute inset-0 ${isDark ? "bg-black/20" : "bg-[linear-gradient(180deg,rgba(255,255,255,0.5),rgba(255,255,255,0.72))]"}`} />
+        <div className={`absolute -left-20 top-20 h-64 w-64 rounded-full blur-3xl ${isDark ? "bg-[#4e4376]/35" : "bg-white/35"}`} />
+        <div className={`absolute right-0 top-0 h-80 w-80 rounded-full blur-3xl ${isDark ? "bg-[#4e4376]/35" : "bg-[#9bcdf1]/45"}`} />
 
         <div className="relative z-10 w-full px-4 py-8 sm:px-8 lg:px-10">
-          <section className={`rounded-[34px] p-6 backdrop-blur-md ${isDark ? "border border-white/10 bg-white/5 shadow-[0_24px_60px_rgba(2,6,23,0.45)]" : "border border-white/75 bg-white/45 shadow-[0_24px_60px_rgba(183,167,228,0.18)]"}`}>
+          <section className={`rounded-[34px] p-6 backdrop-blur-md ${isDark ? "border border-white/10 bg-white/5 shadow-[0_24px_60px_rgba(2,6,23,0.45)]" : "border border-white/75 bg-white/45 shadow-[0_24px_60px_rgba(155,205,241,0.18)]"}`}>
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-2xl">
                 <div className={`inline-flex rounded-full px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] ${isDark ? "bg-white/10 text-slate-300" : "bg-white/80 text-slate-500"}`}>
@@ -280,7 +280,7 @@ export default function FlightsPage() {
 
               <button
                 onClick={() => navigate("/map")}
-                className="rounded-2xl bg-[#8f76ff] px-6 py-4 text-sm font-bold text-white shadow-[0_16px_32px_rgba(143,118,255,0.28)]"
+                className="rounded-2xl bg-[#589efc] px-6 py-4 text-sm font-bold text-white shadow-[0_16px_32px_rgba(88,158,252,0.28)]"
               >
                 Open Radar Map
               </button>
@@ -288,21 +288,21 @@ export default function FlightsPage() {
           </section>
 
           {error && (
-            <div className={`mt-5 rounded-2xl px-5 py-4 text-sm font-semibold shadow-sm ${isDark ? "border border-orange-500/20 bg-orange-500/10 text-orange-300" : "border border-orange-200 bg-white/80 text-orange-700"}`}>
+            <div className={`mt-5 rounded-2xl px-5 py-4 text-sm font-semibold shadow-sm ${isDark ? "border border-[#589efc]/20 bg-[#589efc]/10 text-[#589efc]" : "border border-[#9bcdf1] bg-white/80 text-[#308cd6]"}`}>
               {error}
             </div>
           )}
 
           {loading ? (
             <section className="mt-6">
-              <div className={`rounded-[28px] p-12 text-center backdrop-blur-md ${isDark ? "border border-white/10 bg-white/5 shadow-[0_20px_50px_rgba(2,6,23,0.4)]" : "border border-white/80 bg-white/60 shadow-[0_20px_50px_rgba(183,167,228,0.14)]"}`}>
-                <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-[#8f76ff] border-r-transparent" />
+              <div className={`rounded-[28px] p-12 text-center backdrop-blur-md ${isDark ? "border border-white/10 bg-white/5 shadow-[0_20px_50px_rgba(2,6,23,0.4)]" : "border border-white/80 bg-white/60 shadow-[0_20px_50px_rgba(155,205,241,0.14)]"}`}>
+                <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-[#589efc] border-r-transparent" />
                 <p className={`mt-4 font-bold ${isDark ? "text-slate-300" : "text-slate-600"}`}>Scanning CMB airspace...</p>
               </div>
             </section>
           ) : filteredFlights.length === 0 ? (
             <section className="mt-6">
-              <div className={`rounded-[28px] p-12 text-center backdrop-blur-md ${isDark ? "border border-white/10 bg-white/5 shadow-[0_20px_50px_rgba(2,6,23,0.4)]" : "border border-white/80 bg-white/60 shadow-[0_20px_50px_rgba(183,167,228,0.14)]"}`}>
+              <div className={`rounded-[28px] p-12 text-center backdrop-blur-md ${isDark ? "border border-white/10 bg-white/5 shadow-[0_20px_50px_rgba(2,6,23,0.4)]" : "border border-white/80 bg-white/60 shadow-[0_20px_50px_rgba(155,205,241,0.14)]"}`}>
                 <p className={`font-bold ${isDark ? "text-slate-300" : "text-slate-600"}`}>No flights matched your search.</p>
               </div>
             </section>
@@ -344,11 +344,11 @@ function FlightTicketCard({
 
   return (
     <article
-      className={`overflow-hidden rounded-[24px] backdrop-blur-xl ${isDark ? "border border-white/10 bg-white/5 shadow-[0_18px_40px_rgba(2,6,23,0.38)]" : "border border-white/70 bg-white/38 shadow-[0_18px_40px_rgba(162,146,214,0.18)]"}`}
+      className={`overflow-hidden rounded-[24px] backdrop-blur-xl ${isDark ? "border border-white/10 bg-white/5 shadow-[0_18px_40px_rgba(2,6,23,0.38)]" : "border border-white/70 bg-white/38 shadow-[0_18px_40px_rgba(88,158,252,0.18)]"}`}
       style={{ animationDelay: `${index * 70}ms` }}
     >
       <div className={`relative px-4 py-3.5 sm:px-5 ${isDark ? "bg-[linear-gradient(180deg,rgba(15,23,42,0.78),rgba(15,23,42,0.64))]" : "bg-[linear-gradient(180deg,rgba(255,255,255,0.58),rgba(255,255,255,0.42))]"}`}>
-        <div className={`absolute inset-0 ${isDark ? "bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.1),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(139,116,247,0.16),transparent_34%)]" : "bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.75),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(143,118,255,0.14),transparent_34%)]"}`} />
+        <div className={`absolute inset-0 ${isDark ? "bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.1),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(88,158,252,0.16),transparent_34%)]" : "bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.75),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(88,158,252,0.14),transparent_34%)]"}`} />
         <div className="relative">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -394,7 +394,7 @@ function FlightTicketCard({
               <div className="min-w-0">
                 <div className={`truncate text-[0.95rem] font-black ${isDark ? "text-white" : "text-slate-900"}`}>{flight.operator.toUpperCase()}</div>
                 <div className={`mt-0.5 flex items-center gap-2 text-[11px] ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                  <span className="text-[#f59e0b]">★</span>
+                  <span className="text-[#589efc]">★</span>
                   <span>{flight.isLive ? "Live radar" : "Simulated"}</span>
                   <span className={`rounded-full px-2 py-0.5 font-bold ${statusTone}`}>{flight.status}</span>
                 </div>

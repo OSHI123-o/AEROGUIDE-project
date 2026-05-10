@@ -144,7 +144,7 @@ export default function GlobalLanguageSwitcher() {
                       whileHover={{ x: 4, backgroundColor: "rgba(255,255,255,0.05)" }}
                       onClick={() => switchLanguage(lang.code)}
                       className={`flex items-center justify-between w-full px-3 py-2.5 text-sm rounded-xl transition-colors
-                                ${isActive ? "bg-amber-500/10 text-amber-500" : "text-slate-200"}`}
+                                ${isActive ? "bg-[#589efc]/10 text-[#589efc]" : "text-slate-200"}`}
                       role="menuitem"
                     >
                       <div className="flex items-center gap-3">

@@ -13,6 +13,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
     "express": "^4.19.2",
+    "flightradar24-client": "^1.0.1",
     "helmet": "^7.1.0",
     "pino": "^9.2.0",
     "pino-http": "^9.0.0",

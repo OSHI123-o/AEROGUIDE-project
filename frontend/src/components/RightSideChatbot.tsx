@@ -391,12 +391,13 @@ export default function RightSideChatbot() {
         title="Toggle AI chatbot"
         className={`ag-chat-fab ${open ? "open" : ""}`}
       >
-        <svg viewBox="0 0 24 24" className="ag-chat-fab-icon" fill="none" aria-hidden="true">
-          <rect x="3" y="4" width="18" height="14" rx="5" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M7 21L11 18H17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          <circle cx="9" cy="11" r="1.2" fill="currentColor" />
-          <circle cx="12" cy="11" r="1.2" fill="currentColor" />
-          <circle cx="15" cy="11" r="1.2" fill="currentColor" />
+        <svg viewBox="0 0 24 24" className="ag-chat-fab-icon" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ width: '24px', height: '24px' }}>
+          <path d="M12 8V4H8" />
+          <rect width="16" height="12" x="4" y="8" rx="2" />
+          <path d="M2 14h2" />
+          <path d="M20 14h2" />
+          <path d="M15 13v2" />
+          <path d="M9 13v2" />
         </svg>
         <span className="ag-chat-fab-label">{open ? "Close" : "AI"}</span>
       </button>

@@ -1,4 +1,4 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -28,7 +28,7 @@ body {
     Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #0b1d3a;
+  background-color: transparent;
   font-size: var(--aero-font-scale);
 }
 
@@ -86,10 +86,9 @@ body,
 .glass-panel {
   background: linear-gradient(
     180deg,
-    rgba(6, 18, 39, 0.92),
-    rgba(8, 27, 49, 0.86)
+    rgba(6, 67, 114, 0.92),
+    rgba(6, 67, 114, 0.86)
   );
-  border-right: 1px solid rgba(148, 163, 184, 0.18);
   backdrop-filter: blur(10px);
 }
 
@@ -109,6 +108,17 @@ body,
   outline: none;
 }
 
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 .searchInput::placeholder {
   color: #94a3b8;
 }
@@ -122,8 +132,8 @@ body,
   border: 0;
   border-radius: 10px;
   padding: 0.65rem 0.85rem;
-  background: linear-gradient(135deg, #14b8a6, #0ea5e9);
-  color: #07223a;
+  background: linear-gradient(135deg, #589efc, #308cd6);
+  color: #ffffff;
   font-weight: 800;
   cursor: pointer;
 }
@@ -288,12 +298,12 @@ body,
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: linear-gradient(135deg, #0b3c79 0%, #0f5fb7 45%, #22a5f6 100%);
+  background: linear-gradient(135deg, #064372 0%, #308cd6 45%, #589efc 100%);
   color: #f8fafc;
   font-weight: 800;
   letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: 0 14px 34px rgba(3, 10, 28, 0.44);
+  box-shadow: 0 14px 34px rgba(6, 67, 114, 0.44);
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
@@ -302,12 +312,12 @@ body,
 
 .ag-chat-fab:hover {
   transform: translateY(-2px);
-  box-shadow: 0 18px 38px rgba(3, 10, 28, 0.48);
+  box-shadow: 0 18px 38px rgba(6, 67, 114, 0.48);
   filter: brightness(1.04);
 }
 
 .ag-chat-fab.open {
-  background: linear-gradient(135deg, #0b2f5e 0%, #13437f 100%);
+  background: linear-gradient(135deg, #064372 0%, #308cd6 100%);
 }
 
 .ag-chat-fab-dot {
@@ -363,11 +373,11 @@ body,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  border-bottom: 1px solid rgba(155, 205, 241, 0.2);
   background: linear-gradient(
     135deg,
-    rgba(17, 70, 133, 0.9),
-    rgba(16, 145, 212, 0.78)
+    rgba(6, 67, 114, 0.9),
+    rgba(48, 140, 214, 0.78)
   );
 }
 
@@ -412,15 +422,15 @@ body,
   background:
     radial-gradient(
       circle at 12% 10%,
-      rgba(34, 197, 94, 0.09) 0%,
+      rgba(88, 158, 252, 0.09) 0%,
       transparent 35%
     ),
     radial-gradient(
       circle at 86% 4%,
-      rgba(56, 189, 248, 0.16) 0%,
+      rgba(108, 183, 233, 0.16) 0%,
       transparent 38%
     ),
-    rgba(10, 21, 40, 0.72);
+    rgba(6, 67, 114, 0.72);
 }
 
 .ag-chat-bubble {
@@ -433,16 +443,16 @@ body,
 
 .ag-chat-bubble.assistant {
   justify-self: start;
-  color: #dbeafe;
-  border: 1px solid rgba(96, 165, 250, 0.25);
-  background: rgba(30, 58, 138, 0.32);
+  color: #e2e8f0;
+  border: 1px solid rgba(108, 183, 233, 0.25);
+  background: rgba(48, 140, 214, 0.32);
 }
 
 .ag-chat-bubble.user {
   justify-self: end;
-  color: #0f172a;
-  border: 1px solid rgba(191, 219, 254, 0.75);
-  background: linear-gradient(135deg, #e2e8f0, #dbeafe);
+  color: #064372;
+  border: 1px solid rgba(88, 158, 252, 0.75);
+  background: linear-gradient(135deg, #9bcdf1, #6cb7e9);
 }
 
 .ag-chat-meta {
@@ -544,8 +554,8 @@ body,
   border: 0;
   border-radius: 10px;
   padding: 0 14px;
-  background: linear-gradient(135deg, #0ea5e9 0%, #1d4ed8 100%);
-  color: #eff6ff;
+  background: linear-gradient(135deg, #589efc 0%, #308cd6 100%);
+  color: #ffffff;
   font-weight: 700;
   cursor: pointer;
 }
@@ -577,4 +587,33 @@ body,
     right: 12px;
     bottom: 12px;
   }
+}
+
+/* Flight Status Ticker Styles */
+.flight-ticker-container {
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+}
+
+.flight-ticker-content {
+  display: inline-flex;
+  animation: ticker-scroll 40s linear infinite;
+  padding-left: 100%; /* Start off-screen right */
+}
+
+.flight-ticker-content:hover {
+  animation-play-state: paused;
+}
+
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 2rem;
+  font-family: 'Inter', sans-serif;
 }

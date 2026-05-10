@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ThemeModeIcon from "../components/ThemeModeIcon";
-import { publishVoiceEvent, requestMicrophonePermission, speakText } from "../services/voiceAssistant";
+import { publishVoiceEvent, requestMicrophonePermission, speakText, stopSpeaking } from "../services/voiceAssistant";
 
 const DEFAULT_FLIGHT = {
   pnr: "AG1234",
@@ -98,9 +98,68 @@ const stepGuide = {
   },
 };
 
-function haversineMeters(a, b) {
+const SVGIcons = {
+  Greeting: (
+    <svg className="w-5 h-5 text-aeroguide-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  Location: (
+    <svg className="w-5 h-5 text-aeroguide-blue dark:text-aeroguide-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  ),
+  Atm: (
+    <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  Bag: (
+    <svg className="w-5 h-5 text-[#308cd6]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+    </svg>
+  ),
+  Shopping: (
+    <svg className="w-5 h-5 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+    </svg>
+  ),
+  Passport: (
+    <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+    </svg>
+  ),
+  Coffee: (
+    <svg className="w-5 h-5 text-[#589efc]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+    </svg>
+  ),
+  Star: (
+    <svg className="w-5 h-5 text-[#589efc]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+    </svg>
+  ),
+  Objective: (
+    <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  ),
+  Tip: (
+    <svg className="w-5 h-5 text-[#6cb7e9]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+    </svg>
+  ),
+  Target: (
+    <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  )
+};
+
+function haversineMeters(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
   const R = 6371000;
-  const toRad = (d) => (d * Math.PI) / 180;
+  const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
   const dLon = toRad(b.lon - a.lon);
   const x =
@@ -109,7 +168,7 @@ function haversineMeters(a, b) {
   return Math.round(R * (2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))));
 }
 
-function getTargetForStep(stepId, gate) {
+function getTargetForStep(stepId: string, gate: string): { name: string; lat: number; lon: number } | null {
   const stepTargets = {
     arrive: { name: "Terminal 1 Entrance", lat: 7.1781, lon: 79.8842 },
     checkin: { name: "Check-in Counters", lat: 7.1794, lon: 79.8853 },
@@ -117,7 +176,7 @@ function getTargetForStep(stepId, gate) {
     immigration: { name: "Immigration", lat: 7.1807, lon: 79.8846 },
   };
 
-  const gateTargets = {
+  const gateTargets: Record<string, { name: string; lat: number; lon: number }> = {
     A12: { name: "Gate A12", lat: 7.1802, lon: 79.8848 },
   };
 
@@ -131,15 +190,17 @@ function getTargetForStep(stepId, gate) {
 
 export default function GuidePage() {
   const navigate = useNavigate();
-  const [themeMode, setThemeMode] = useState(() => (localStorage.getItem("aeroguide_theme") === "dark" ? "dark" : "light"));
+  const [themeMode, setThemeMode] = useState<"light" | "dark">(() => (localStorage.getItem("aeroguide_theme") === "dark" ? "dark" : "light"));
   const [flight, setFlight] = useState(DEFAULT_FLIGHT);
   const [stepIndex, setStepIndex] = useState(0);
-  const [coords, setCoords] = useState(null);
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [locationStatus, setLocationStatus] = useState("Locating you...");
   const [micAllowed, setMicAllowed] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [autoAdvancedTriggered, setAutoAdvancedTriggered] = useState(false); // To show a cool UI flash when it auto-updates
+  const [journeyCompleteNotification, setJourneyCompleteNotification] = useState(false);
   const lastAnnouncementKeyRef = useRef("");
+  const isFirstAnnouncementRef = useRef(true);
 
   useEffect(() => {
     localStorage.setItem("aeroguide_theme", themeMode);
@@ -177,7 +238,7 @@ export default function GuidePage() {
 
   const progress = useMemo(() => Math.round((stepIndex / Math.max(1, steps.length - 1)) * 100), [stepIndex]);
   const currentStep = steps[stepIndex];
-  const activeGuide = stepGuide[currentStep.id] ?? stepGuide.arrive;
+  const activeGuide = stepGuide[currentStep.id as keyof typeof stepGuide] ?? stepGuide.arrive;
   const currentTarget = useMemo(() => getTargetForStep(currentStep.id, flight.gate), [currentStep.id, flight.gate]);
   
   const metersToTarget = useMemo(
@@ -203,27 +264,82 @@ export default function GuidePage() {
         setStepIndex((prev) => prev + 1);
         
         // If they have voice enabled, it will automatically read the next step's prompt.
+      } else if (stepIndex === steps.length - 1) {
+        setJourneyCompleteNotification(true);
       }
     }
   }, [metersToTarget, stepIndex]);
   // ==========================================
 
-  const friendlyPrompt = useMemo(() => {
-    if (!currentTarget) return `Let's focus on ${currentStep.title}.`;
+  const friendlyData = useMemo(() => {
+    if (!currentTarget) {
+      const text = `Let's focus on ${currentStep.title}.`;
+      return {
+        spokenText: text,
+        points: [{ icon: SVGIcons.Target, text }]
+      };
+    }
     
     let distanceContext = "";
+    let locationPoint = "";
+    
     if (metersToTarget === null) {
       distanceContext = `Your next stop is ${currentTarget.name}.`;
+      locationPoint = `I need your live location to track your exact distance to ${currentTarget.name}.`;
     } else if (metersToTarget > 300) {
-      distanceContext = `You're about ${metersToTarget} meters from ${currentTarget.name}. It's a bit of a walk, so keep heading in that general direction.`;
+      distanceContext = `You're about ${metersToTarget} meters from ${currentTarget.name}. It's a bit of a walk, but I'm tracking your live location!`;
+      locationPoint = `Live Tracking: You are currently ${metersToTarget} meters away. Keep walking!`;
     } else if (metersToTarget > 50) {
-      distanceContext = `You're getting closer! Only ${metersToTarget} meters to ${currentTarget.name}.`;
+      distanceContext = `You're getting closer! Only ${metersToTarget} meters to ${currentTarget.name}. I'm tracking your live location.`;
+      locationPoint = `Live Tracking: You are ${metersToTarget} meters away from your destination.`;
     } else {
-      distanceContext = `You've practically arrived at ${currentTarget.name}. Look around!`;
+      distanceContext = `You've practically arrived at ${currentTarget.name}. Look around! My live tracking shows you are right there.`;
+      locationPoint = `Live Tracking: You have arrived at ${currentTarget.name}!`;
     }
 
-    return `Hi there! ${distanceContext} ${activeGuide.objective} Quick tip: ${activeGuide.proTip}`;
-  }, [currentTarget, metersToTarget, currentStep.title, activeGuide]);
+    let greeting = "Hi there! I am your super friendly companion for today.";
+    let stepSpecificTip = "";
+    let stepSpecificIcon = SVGIcons.Star;
+
+    if (currentStep.id === "arrive") {
+      greeting = "Welcome to the airport! I'm your super friendly companion ready to start this journey with you.";
+      stepSpecificTip = "Before heading inside, note that there are currency exchange counters and a Bank of Ceylon ATM right at the BIA main entrance.";
+      stepSpecificIcon = SVGIcons.Atm;
+    } else if (currentStep.id === "checkin") {
+      greeting = "Great job getting here! Now let's handle your check-in together.";
+      stepSpecificTip = "If you need your bags wrapped securely, the wrapping station is right across the check-in counters in the lobby.";
+      stepSpecificIcon = SVGIcons.Bag;
+    } else if (currentStep.id === "security") {
+      greeting = "You're doing amazing! Let's breeze through security like a pro.";
+      stepSpecificTip = "After clearing security, treat yourself to the Flemingo Duty Free for some great deals at Bandaranaike International Airport.";
+      stepSpecificIcon = SVGIcons.Shopping;
+    } else if (currentStep.id === "immigration") {
+      greeting = "Almost there! I'm right beside you for this quick immigration stop.";
+      stepSpecificTip = "BIA immigration queues can get busy. Don't forget to visit Spa Ceylon nearby if you have time to relax afterward!";
+      stepSpecificIcon = SVGIcons.Passport;
+    } else if (currentStep.id === "gate") {
+      greeting = "The final stretch! Let's find your gate so you can relax before the flight.";
+      stepSpecificTip = "Grab a quick coffee at The Coffee Bean & Tea Leaf in the BIA transit area before boarding your flight.";
+      stepSpecificIcon = SVGIcons.Coffee;
+    }
+
+    const points = [
+      { icon: SVGIcons.Greeting, text: greeting },
+      { icon: SVGIcons.Location, text: locationPoint },
+    ];
+
+    if (stepSpecificTip) {
+      points.push({ icon: stepSpecificIcon, text: stepSpecificTip });
+    }
+
+    points.push({ icon: SVGIcons.Objective, text: activeGuide.objective });
+    points.push({ icon: SVGIcons.Tip, text: `Quick tip: ${activeGuide.proTip}` });
+
+    return {
+      spokenText: `${greeting} ${distanceContext} ${stepSpecificTip ? stepSpecificTip + " " : ""}${activeGuide.objective} Quick tip: ${activeGuide.proTip}`,
+      points: points
+    };
+  }, [currentTarget, metersToTarget, currentStep.title, currentStep.id, activeGuide]);
 
   const mapEmbedUrl = useMemo(() => {
     if (!currentTarget) return "";
@@ -233,6 +349,36 @@ export default function GuidePage() {
     return `https://maps.google.com/maps?q=${currentTarget.lat},${currentTarget.lon}&z=18&output=embed`;
   }, [coords, currentTarget]);
 
+  const currentLang = localStorage.getItem("aeroguide_global_language") || "en";
+  const ttsLangMap: Record<string, string> = {
+    "en": "en-US",
+    "si": "si-LK",
+    "zh-CN": "zh-CN",
+    "es": "es-ES",
+    "fr": "fr-FR",
+    "ar": "ar-SA",
+    "hi": "hi-IN",
+  };
+  const speakLang = ttsLangMap[currentLang] || "en-US";
+
+  const translateForVoice = async (text: string, targetLang: string) => {
+    if (targetLang === "en") return text;
+    try {
+      const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ q: text }).toString(),
+      });
+      const data = await res.json();
+      return data[0].map((item: any[]) => item[0]).join("");
+    } catch (e) {
+      console.error("Translation error:", e);
+      return text;
+    }
+  };
+
   useEffect(() => {
     if (!micAllowed) return;
     const key = `${flight.flightNo}-${stepIndex}-${currentTarget?.name ?? "none"}`;
@@ -240,25 +386,105 @@ export default function GuidePage() {
     
     lastAnnouncementKeyRef.current = key;
     setIsSpeaking(true);
-    publishVoiceEvent({ source: "guide", text: friendlyPrompt });
-    speakText(friendlyPrompt, { rate: 0.97, pitch: 1, lang: "en-US" });
     
-    setTimeout(() => setIsSpeaking(false), 5000); 
-  }, [currentTarget?.name, flight.flightNo, friendlyPrompt, micAllowed, stepIndex]);
+    const comprehensiveText = [
+      ...friendlyData.points.map(pt => pt.text),
+      `Here are your full guide instructions for ${activeGuide.heading}:`,
+      ...activeGuide.points,
+      `Please prepare these items: ${activeGuide.prepare.join(", ")}.`,
+      `Why this is important: ${activeGuide.why}`,
+      `Quality check: ${activeGuide.qualityChecks.join(" ")}`,
+      `Common mistake to avoid: ${activeGuide.commonMistakes.join(" ")}`,
+      `Estimated time: ${activeGuide.timeHint}.`
+    ].join(". ");
+    
+    translateForVoice(comprehensiveText, currentLang).then((translatedText) => {
+      publishVoiceEvent({ source: "guide", text: translatedText });
+      speakText(translatedText, { rate: 0.97, pitch: 1, lang: speakLang, queue: isFirstAnnouncementRef.current });
+      isFirstAnnouncementRef.current = false;
+      setTimeout(() => setIsSpeaking(false), Math.max(5000, translatedText.length * 50)); 
+    });
+  }, [currentTarget?.name, flight.flightNo, friendlyData.spokenText, friendlyData.points, micAllowed, stepIndex, speakLang, currentLang]);
 
   const enableMicForVoiceGuide = async () => {
     const allowed = await requestMicrophonePermission();
     setMicAllowed(allowed);
     if (allowed) {
-      publishVoiceEvent({ source: "guide", text: "Voice guidance enabled for your live journey." });
-      speakText("Voice guidance enabled. I'm your friendly Aeroguide companion.", { rate: 0.98, lang: "en-US" });
+      isFirstAnnouncementRef.current = true;
+      const introEnglish = "Voice guidance enabled. I'm your friendly Aeroguide companion.";
+      const eventEnglish = "Voice guidance enabled for your live journey.";
+      
+      const translatedIntro = await translateForVoice(introEnglish, currentLang);
+      const translatedEvent = await translateForVoice(eventEnglish, currentLang);
+      
+      publishVoiceEvent({ source: "guide", text: translatedEvent });
+      speakText(translatedIntro, { rate: 0.98, lang: speakLang });
       lastAnnouncementKeyRef.current = ""; 
     }
   };
 
+  const disableVoiceGuide = async () => {
+    setMicAllowed(false);
+    stopSpeaking();
+    const disableEnglish = "Voice guidance disabled.";
+    const translatedDisable = await translateForVoice(disableEnglish, currentLang);
+    publishVoiceEvent({ source: "guide", text: translatedDisable });
+  };
+
+  useEffect(() => {
+    if (journeyCompleteNotification && micAllowed) {
+      disableVoiceGuide();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journeyCompleteNotification]);
+
+  const toggleVoiceGuide = () => {
+    if (micAllowed) {
+      disableVoiceGuide();
+    } else {
+      enableMicForVoiceGuide();
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-aeroguide-navy text-slate-900 dark:text-white font-sans selection:bg-aeroguide-gold selection:text-aeroguide-navy relative overflow-x-hidden transition-colors duration-300">
+    <div className="min-h-screen bg-gradient-to-r from-[#2C6CBC] via-[#71C3F7] to-[#F5F5F5] dark:from-[#0B1021] dark:via-[#1B2845] dark:to-[#5A77A2] text-slate-900 dark:text-slate-100 font-sans selection:bg-aeroguide-gold selection:text-aeroguide-navy relative overflow-x-hidden transition-colors duration-300">
       
+      <span id="voice-intro-text" className="sr-only">Voice guidance enabled. I'm your friendly Aeroguide companion.</span>
+      <span id="voice-disable-text" className="sr-only">Voice guidance disabled.</span>
+      <span id="voice-enabled-event-text" className="sr-only">Voice guidance enabled for your live journey.</span>
+      
+      {/* Journey Complete Notification Modal */}
+      {journeyCompleteNotification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-aeroguide-navy border border-slate-200 dark:border-aeroguide-gold/30 rounded-3xl p-8 max-w-md w-full shadow-2xl transform animate-in zoom-in-95 duration-300 text-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-aeroguide-gold opacity-20 blur-[40px] rounded-full pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-aeroguide-blue opacity-20 blur-[40px] rounded-full pointer-events-none"></div>
+            
+            <div className="relative z-10">
+              <div className="w-20 h-20 bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">
+                You are complete your all steps!
+              </h2>
+              <p className="text-slate-600 dark:text-slate-300 mb-8">
+                Congratulations! You have reached your boarding gate. Have a safe and wonderful flight!
+              </p>
+              
+              <button
+                onClick={() => setJourneyCompleteNotification(false)}
+                className={`w-full rounded-xl px-6 py-4 text-sm font-bold shadow-[0_4px_14px_rgba(253,185,19,0.3)] transition-all ${themeMode === 'dark' ? 'bg-gradient-to-r from-[#1B2845] to-[#5A77A2] text-white hover:brightness-110' : 'bg-gradient-to-r from-[#2C6CBC] via-[#71C3F7] to-[#F5F5F5] text-slate-900 hover:brightness-95'}`}
+              >
+                Close Notification
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 fixed">
         <div className="absolute -top-[10%] -right-[10%] w-[50vw] h-[50vw] rounded-full bg-aeroguide-blue opacity-10 dark:opacity-20 blur-[120px]"></div>
         <div className="absolute top-[40%] -left-[10%] w-[40vw] h-[40vw] rounded-full bg-aeroguide-gold opacity-10 dark:opacity-10 blur-[100px]"></div>
@@ -266,7 +492,7 @@ export default function GuidePage() {
 
       <div className="w-full relative z-10 p-4 sm:p-8 lg:p-10 space-y-6">
         
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-6 backdrop-blur-md shadow-xl transition-colors duration-300">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-black/20 dark:backdrop-blur-xl p-6 shadow-sm transition-colors duration-300">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Live Companion</h1>
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Your personal step-by-step airport guide.</p>
@@ -274,19 +500,19 @@ export default function GuidePage() {
           
           <div className="flex items-center gap-3">
             <button
-              className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-colors shadow-sm dark:shadow-none"
+              className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black/20 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-colors shadow-sm"
               onClick={() => setThemeMode((p) => (p === "light" ? "dark" : "light"))}
             >
               <ThemeModeIcon mode={themeMode} />
             </button>
             <button 
-              className="rounded-xl border border-slate-300 dark:border-white/20 bg-transparent px-6 py-3 text-sm font-bold text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+              className="rounded-xl border border-slate-300 dark:border-[#25407a] bg-transparent px-6 py-3 text-sm font-bold text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-[#132242] transition-colors"
               onClick={() => navigate("/dashboard")}
             >
               Dashboard
             </button>
             <button 
-              className="rounded-xl bg-aeroguide-gold px-6 py-3 text-sm font-bold text-aeroguide-navy shadow-[0_4px_14px_rgba(253,185,19,0.3)] hover:brightness-95 dark:hover:brightness-110 transition-all"
+              className={`rounded-xl px-6 py-3 text-sm font-bold shadow-sm transition-all ${themeMode === 'dark' ? 'bg-gradient-to-r from-[#1B2845] to-[#5A77A2] text-white hover:brightness-110' : 'bg-gradient-to-r from-[#2C6CBC] via-[#71C3F7] to-[#F5F5F5] text-slate-900 hover:brightness-95'}`}
               onClick={() => navigate(`/map?gate=${encodeURIComponent(flight.gate)}`)}
             >
               Map Route
@@ -295,20 +521,20 @@ export default function GuidePage() {
         </header>
 
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 rounded-[24px] border border-slate-200 dark:border-white/10 bg-aeroguide-navy dark:bg-[#050B14] p-6 sm:p-8 shadow-xl relative overflow-hidden">
+          <div className="lg:col-span-2 rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-black/20 dark:backdrop-blur-xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-aeroguide-blue opacity-20 blur-[50px] rounded-full pointer-events-none"></div>
             
             <div className="relative z-10">
               <div className="text-xs font-bold uppercase tracking-widest text-aeroguide-gold">Current Journey</div>
-              <div className="mt-2 text-3xl sm:text-4xl font-black text-white">
+              <div className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">
                 {flight.originCode} <span className="text-slate-500 mx-2">→</span> {flight.destinationCode}
               </div>
-              <div className="mt-2 text-sm text-slate-300">
+              <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                 Flight {flight.flightNo} • Terminal {flight.terminal} • Gate {flight.gate}
               </div>
               
               <div className="mt-6 flex items-center gap-4">
-                <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                <div className="flex-1 h-2 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
                   <div className="h-full bg-aeroguide-gold rounded-full transition-all duration-500 ease-out" style={{ width: `${progress}%` }}></div>
                 </div>
                 <div className="text-sm font-bold text-aeroguide-gold">{progress}%</div>
@@ -316,7 +542,7 @@ export default function GuidePage() {
             </div>
           </div>
 
-          <div className={`rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-6 shadow-xl backdrop-blur-md flex flex-col justify-between transition-all duration-500 ${autoAdvancedTriggered ? 'shadow-[0_0_30px_rgba(253,185,19,0.4)] border-aeroguide-gold' : ''}`}>
+          <div className={`rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-black/20 dark:backdrop-blur-xl p-6 shadow-sm flex flex-col justify-between transition-all duration-500 ${autoAdvancedTriggered ? 'shadow-[0_0_30px_rgba(253,185,19,0.4)] border-aeroguide-gold' : ''}`}>
             <div>
               <div className="flex justify-between items-start">
                 <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Tracking Status</div>
@@ -331,23 +557,23 @@ export default function GuidePage() {
                 {coords ? `${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}` : "Unknown Location"}
               </div>
               <div className="mt-1 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${coords ? 'bg-green-500 animate-pulse' : 'bg-orange-500'}`}></div>
+                <div className={`w-2 h-2 rounded-full ${coords ? 'bg-green-500 animate-pulse' : 'bg-[#589efc]'}`}></div>
                 {locationStatus}
               </div>
             </div>
 
             <button
-              onClick={enableMicForVoiceGuide}
+              onClick={toggleVoiceGuide}
               className={`mt-6 w-full rounded-xl border px-4 py-3 text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                 micAllowed 
-                  ? 'border-green-500/30 bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400' 
-                  : 'border-slate-300 dark:border-white/20 bg-white dark:bg-white/5 text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10'
+                  ? 'border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20' 
+                  : 'border-slate-300 dark:border-[#25407a] bg-transparent text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-[#132242]'
               }`}
             >
               {micAllowed ? (
                 <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-                  Voice Guide Active
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" /></svg>
+                  Stop Voice Guidance
                 </>
               ) : (
                 <>
@@ -358,6 +584,41 @@ export default function GuidePage() {
             </button>
           </div>
         </section>
+
+        {/* Horizontal Journey Roadmap */}
+        <div className="w-full flex rounded-[20px] overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-black/20 dark:backdrop-blur-xl shadow-sm mb-6">
+          {steps.map((step, idx) => {
+            const isCompleted = idx < stepIndex;
+            const isCurrent = idx === stepIndex;
+            
+            let bgClass = "bg-slate-50 dark:bg-black/20 text-slate-500 dark:text-slate-400";
+            if (isCompleted) bgClass = "bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300";
+            if (isCurrent) bgClass = "bg-blue-600 text-white shadow-lg z-10";
+            
+            const clipPath = idx === 0 
+              ? "polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%)"
+              : idx === steps.length - 1
+              ? "polygon(0 0, 100% 0, 100% 100%, 0 100%, 20px 50%)"
+              : "polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%, 20px 50%)";
+              
+            const margin = idx === 0 ? "0" : "-20px";
+
+            return (
+              <div 
+                key={step.id} 
+                className={`flex-1 relative flex flex-col items-center justify-center py-2 px-2 sm:px-6 transition-all duration-500 ${bgClass}`}
+                style={{ clipPath, marginLeft: margin, zIndex: steps.length - idx + (isCurrent ? 10 : 0) }}
+              >
+                <div className="text-[10px] sm:text-[13px] font-black uppercase tracking-wider">
+                  Step {idx + 1}
+                </div>
+                <div className="text-[9px] sm:text-[11px] font-medium text-center">
+                  {isCompleted ? "Completed" : isCurrent ? "In progress" : "Awaiting"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
@@ -371,10 +632,17 @@ export default function GuidePage() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-aeroguide-blue dark:text-aeroguide-gold uppercase tracking-wider mb-1">Friendly Assistant</h3>
-                  <p className="text-slate-700 dark:text-slate-200 font-medium leading-relaxed">
-                    {friendlyPrompt}
-                  </p>
+                  <h3 className="text-sm font-bold text-aeroguide-blue dark:text-aeroguide-gold uppercase tracking-wider mb-2">Friendly Assistant</h3>
+                  <div className="space-y-3 mt-3">
+                    {friendlyData.points.map((pt, i) => (
+                      <div key={i} className="flex gap-3 items-start">
+                        <span className="flex-shrink-0 mt-0.5">{pt.icon}</span>
+                        <span className="text-sm text-slate-700 dark:text-slate-200 font-medium leading-relaxed friendly-point-text">
+                          {pt.text}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -408,23 +676,39 @@ export default function GuidePage() {
               </div>
             </div>
 
-            <button
-              onClick={() => setStepIndex((v) => (v < steps.length - 1 ? v + 1 : v))}
-              disabled={stepIndex >= steps.length - 1}
-              className={`w-full rounded-xl px-6 py-4 text-sm font-bold shadow-lg transition-all ${
-                stepIndex >= steps.length - 1 
-                  ? 'bg-slate-200 dark:bg-white/10 text-slate-400 cursor-not-allowed'
-                  : 'bg-slate-800 dark:bg-white/10 border dark:border-white/20 text-white hover:bg-slate-700 dark:hover:bg-white/20'
-              }`}
-            >
-              {stepIndex >= steps.length - 1 ? "Journey Complete" : "Manual Override: Next Step"}
-            </button>
+            <div className="flex gap-4 w-full">
+              <button
+                onClick={() => setStepIndex((v) => Math.max(0, v - 1))}
+                disabled={stepIndex === 0}
+                className={`w-1/3 rounded-xl px-4 py-4 text-sm font-bold shadow-lg transition-all ${
+                  stepIndex === 0 
+                    ? 'bg-slate-200 dark:bg-white/5 text-slate-400 cursor-not-allowed border dark:border-white/10'
+                    : 'bg-white dark:bg-white/10 border border-slate-300 dark:border-white/20 text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/20'
+                }`}
+              >
+                Previous
+              </button>
+
+              <button
+                onClick={() => {
+                  if (stepIndex < steps.length - 1) setStepIndex((v) => v + 1);
+                  else setJourneyCompleteNotification(true);
+                }}
+                className={`flex-1 rounded-xl px-6 py-4 text-sm font-bold shadow-lg transition-all ${
+                  stepIndex >= steps.length - 1 
+                    ? 'bg-green-600 dark:bg-green-500 text-white hover:bg-green-700 dark:hover:bg-green-600'
+                    : 'bg-slate-800 dark:bg-white/10 border dark:border-white/20 text-white hover:bg-slate-700 dark:hover:bg-white/20'
+                }`}
+              >
+                {stepIndex >= steps.length - 1 ? "Complete Journey" : "Manual Override: Next Step"}
+              </button>
+            </div>
 
           </div>
 
           <div className="space-y-6 flex flex-col">
             
-            <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-4 shadow-xl backdrop-blur-md flex-1 min-h-[300px] flex flex-col">
+            <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-4 shadow-xl backdrop-blur-md flex-1 min-h-[500px] h-full flex flex-col">
               <div className="flex justify-between items-center mb-3 px-2">
                 <div>
                   <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Live Step Map</div>
@@ -437,41 +721,12 @@ export default function GuidePage() {
                 )}
               </div>
               
-              <div className="w-full flex-1 rounded-[16px] overflow-hidden border border-slate-200 dark:border-white/10 relative bg-slate-200 dark:bg-slate-800">
+              <div className="w-full flex-1 rounded-[16px] overflow-hidden border border-slate-200 dark:border-white/10 relative bg-slate-200 dark:bg-black/20">
                 {mapEmbedUrl ? (
                   <iframe title="Live step map" src={mapEmbedUrl} width="100%" height="100%" style={{ border: 0, position: 'absolute', inset: 0 }} loading="lazy" />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-slate-500">No map data available</div>
                 )}
-              </div>
-            </div>
-
-            <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-6 shadow-xl backdrop-blur-md">
-              <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-4">Journey Roadmap</div>
-              <div className="space-y-3">
-                {steps.map((step, idx) => (
-                  <div
-                    key={step.id}
-                    className={`rounded-xl border p-3 flex items-center justify-between transition-all duration-500 ${
-                      idx === stepIndex 
-                        ? 'border-aeroguide-gold bg-aeroguide-gold/10 dark:bg-aeroguide-gold/5 scale-[1.02]' 
-                        : idx < stepIndex
-                        ? 'border-green-500/30 bg-green-50/50 dark:bg-green-500/5'
-                        : 'border-slate-200 dark:border-white/5 bg-white/40 dark:bg-white/5 opacity-60'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`flex shrink-0 h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${
-                        idx < stepIndex ? 'bg-green-500 text-white' : idx === stepIndex ? 'bg-aeroguide-gold text-aeroguide-navy' : 'bg-slate-200 dark:bg-white/10 text-slate-500'
-                      }`}>
-                        {idx < stepIndex ? '✓' : idx + 1}
-                      </div>
-                      <div className={`text-sm font-bold ${idx === stepIndex ? 'text-aeroguide-navy dark:text-aeroguide-gold' : 'text-slate-900 dark:text-white'}`}>
-                        {step.title}
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
 

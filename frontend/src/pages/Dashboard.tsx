@@ -5,6 +5,9 @@ import GlobeComponent from "../components/GlobeComponent";
 import FlightTicker from "../components/FlightTicker";
 import JourneyTimeline from "../components/JourneyTimeline";
 import TerminalSlider from "../components/TerminalSlider";
+import terminalMapPreview from "../assets/terminal_map_preview.png";
+import logo from "../assets/logo.png";
+import tarmacBg from "../assets/tarmac_bg.jpg";
 import { lookupFlightsByPnr, suggestPassengers, type FlightLookupResult } from "../services/flightLookup";
 import { fetchLiveWeather, type WeatherSnapshot } from "../services/weather";
 import {
@@ -289,11 +292,8 @@ export default function Dashboard() {
       {/* SIDEBAR */}
       <aside className={`relative z-10 w-full lg:w-72 lg:h-screen lg:sticky top-0 flex flex-col p-6 transition-colors duration-300 ${isDark ? "bg-black/20 backdrop-blur-xl border-r border-white/10" : "bg-white/20 backdrop-blur-xl border-r border-white/30"}`}>
         <div className="flex items-center gap-3 mb-10">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-aeroguide-gold shadow-lg shadow-aeroguide-gold/20">
-            <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6 text-aeroguide-navy" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 2L11 13" />
-              <path d="M22 2L15 22L11 13L2 9L22 2Z" />
-            </svg>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-transparent shadow-lg shadow-aeroguide-gold/20 overflow-hidden">
+            <img src={logo} alt="AeroGuide Logo" className="w-full h-full object-contain" />
           </div>
           <div>
             <div className={`text-xl font-black tracking-widest ${isDark ? "text-white" : "text-slate-900"}`}>AEROGUIDE</div>
@@ -348,7 +348,7 @@ export default function Dashboard() {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className={`text-2xl sm:text-3xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    {userProfile ? `Ayubowan, ${userProfile.firstName}!` : 'Ayubowan!'}
+                    {userProfile ? `Welcome, ${userProfile.firstName}!` : 'Welcome!'}
                   </h1>
                   <span className="animate-bounce text-2xl">👋</span>
                 </div>
@@ -480,23 +480,60 @@ export default function Dashboard() {
                 </div>
               </article>
 
-              {/* BIA Map Preview Card */}
-              <article className={`group relative rounded-[24px] border overflow-hidden shadow-sm transition-all duration-500 cursor-pointer ${isDark ? 'bg-black/20 border-white/10 hover:border-white/30' : 'bg-white border-slate-200 hover:border-aeroguide-blue'}`} onClick={() => navigate("/map")}>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10 opacity-60 group-hover:opacity-40 transition-opacity"></div>
+              {/* BIA Map Preview Card - Creative Redesign */}
+              <article 
+                className={`group relative rounded-[24px] border overflow-hidden shadow-xl transition-all duration-500 cursor-pointer ${isDark ? 'bg-[#0B1021] border-white/10 hover:border-aeroguide-blue hover:shadow-aeroguide-blue/20' : 'bg-slate-900 border-slate-800 hover:border-aeroguide-blue hover:shadow-aeroguide-blue/30'}`} 
+                onClick={() => navigate("/map")}
+                style={{ minHeight: '260px' }}
+              >
+                {/* High-tech background image */}
                 <img 
-                  src="https://www.airport.lk/Assets/images/map/arrival_map.jpg" 
+                  src={terminalMapPreview} 
                   alt="Airport Map Preview" 
-                  className="w-full h-48 object-cover transition-all duration-700 group-hover:scale-110 opacity-90 brightness-110 contrast-125 saturate-150"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 opacity-80 mix-blend-screen"
                 />
-                <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-xl font-black text-white tracking-tight uppercase">Interactive Terminal Map</h3>
-                      <p className="text-slate-300 text-xs font-bold mt-1 uppercase tracking-widest">Explore Gates, Duty-Free & Lounges</p>
+                
+                {/* Radar sweep animation overlay */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-[24px]">
+                  <div className="absolute top-1/2 left-1/2 w-[200%] h-[200%] -translate-x-1/2 -translate-y-1/2 bg-[conic-gradient(from_0deg,transparent_0deg,transparent_270deg,rgba(56,189,248,0.2)_360deg)] animate-[spin_4s_linear_infinite]"></div>
+                  <div className="absolute top-1/2 left-1/2 w-full h-full -translate-x-1/2 -translate-y-1/2 border border-white/5 rounded-full"></div>
+                  <div className="absolute top-1/2 left-1/2 w-[60%] h-[60%] -translate-x-1/2 -translate-y-1/2 border border-white/5 rounded-full"></div>
+                </div>
+
+                {/* Animated pulsing waypoints */}
+                <div className="absolute top-[30%] left-[40%] w-3 h-3 bg-aeroguide-gold rounded-full shadow-[0_0_10px_#f59e0b] group-hover:scale-125 transition-transform">
+                  <div className="absolute inset-0 w-full h-full bg-aeroguide-gold rounded-full animate-ping opacity-75"></div>
+                </div>
+                <div className="absolute top-[60%] left-[70%] w-2.5 h-2.5 bg-aeroguide-blue rounded-full shadow-[0_0_10px_#38bdf8] group-hover:scale-125 transition-transform delay-150">
+                  <div className="absolute inset-0 w-full h-full bg-aeroguide-blue rounded-full animate-ping opacity-75 [animation-delay:0.5s]"></div>
+                </div>
+                <div className="absolute top-[45%] left-[25%] w-2 h-2 bg-green-400 rounded-full shadow-[0_0_10px_#4ade80] group-hover:scale-125 transition-transform delay-300">
+                  <div className="absolute inset-0 w-full h-full bg-green-400 rounded-full animate-ping opacity-75 [animation-delay:1s]"></div>
+                </div>
+
+                {/* Gradient obscuring the bottom for text readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B1021]/90 via-[#0B1021]/40 to-transparent z-10 transition-opacity"></div>
+                
+                {/* Content Overlay */}
+                <div className="absolute bottom-0 left-0 right-0 p-6 z-20 flex flex-col justify-end h-full">
+                  <div className="flex items-end justify-between">
+                    <div className="flex-1 pr-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        <span className="text-[10px] font-black tracking-widest text-aeroguide-blue uppercase">Live Tracking Mode</span>
+                      </div>
+                      <h3 className="text-2xl font-black text-white tracking-tight uppercase group-hover:text-aeroguide-blue transition-colors">
+                        Interactive Terminal Map
+                      </h3>
+                      <p className="text-slate-300 text-xs font-bold mt-2 uppercase tracking-widest leading-relaxed">
+                        Explore Gates, Duty-Free & Lounges in Real-Time 3D Space
+                      </p>
                     </div>
-                    <div className="w-12 h-12 rounded-2xl bg-aeroguide-blue flex items-center justify-center shadow-lg group-hover:translate-x-2 transition-transform">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" />
+                    
+                    {/* Action Button */}
+                    <div className="shrink-0 w-14 h-14 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg group-hover:bg-aeroguide-blue group-hover:border-aeroguide-blue transition-all duration-300 group-hover:scale-110">
+                      <svg className="w-6 h-6 text-white transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                       </svg>
                     </div>
                   </div>
@@ -631,6 +668,7 @@ export default function Dashboard() {
 
           {/* PASSENGER JOURNEY ANIMATION */}
           <JourneyTimeline isDark={isDark} />
+
         </div>
       </main>
     </div>

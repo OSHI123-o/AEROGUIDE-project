@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { CATEGORY_ORDER, getCategoryMeta } from "../poiCatalog";
+import { pois as ALL_POIS } from "../mockData";
+import logo from "../assets/logo.png";
 
 export default function Sidebar({
   onSearch,
@@ -126,9 +128,9 @@ export default function Sidebar({
   };
 
   const availableCategories = useMemo(() => {
-    const set = new Set((pois || []).map((p) => p.category));
+    const set = new Set(ALL_POIS.map((p) => p.category));
     return CATEGORY_ORDER.filter((c) => set.has(c));
-  }, [pois]);
+  }, []);
 
   return (
     <div
@@ -155,21 +157,24 @@ export default function Sidebar({
       }}
     >
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: "1.5rem",
-              fontWeight: 900,
-              background: "linear-gradient(90deg, #7dd3fc 0%, #38bdf8 45%, #22d3ee 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              letterSpacing: "-0.5px",
-            }}
-          >
-            {strings.title}
-          </h1>
-          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>Airport amenities - live map</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <img src={logo} alt="AeroGuide Logo" style={{ height: "36px", width: "36px", objectFit: "contain" }} />
+          <div>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: "1.5rem",
+                fontWeight: 900,
+                background: "linear-gradient(90deg, #7dd3fc 0%, #38bdf8 45%, #22d3ee 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                letterSpacing: "-0.5px",
+              }}
+            >
+              {strings.title}
+            </h1>
+            <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>Airport amenities - live map</div>
+          </div>
         </div>
 
         <button
@@ -313,7 +318,7 @@ export default function Sidebar({
         </section>
       )}
 
-      {!navigationSteps.length && (
+      {true && (
         <section className="animate-fade-in" style={{ animationDelay: "0.12s", flex: 1 }}>
           <h3
             style={{

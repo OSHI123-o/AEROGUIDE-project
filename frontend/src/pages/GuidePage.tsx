@@ -17,6 +17,21 @@ const DEFAULT_FLIGHT = {
   status: "On Schedule",
 };
 
+type DetourTarget = {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  icon: keyof typeof SVGIcons;
+};
+
+const detourLocations: DetourTarget[] = [
+  { id: "coffee", name: "The Coffee Bean & Tea Leaf", lat: 7.1800, lon: 79.8850, icon: "Coffee" },
+  { id: "restroom", name: "Restroom (Terminal 1)", lat: 7.1795, lon: 79.8851, icon: "Bag" },
+  { id: "dutyfree", name: "Flemingo Duty Free", lat: 7.1804, lon: 79.8845, icon: "Shopping" },
+  { id: "atm", name: "Bank of Ceylon ATM", lat: 7.1785, lon: 79.8843, icon: "Atm" }
+];
+
 const steps = [
   { id: "arrive", title: "Arrive at Terminal", detail: "Enter terminal and keep passport + ticket ready." },
   { id: "checkin", title: "Check-in / Bag Drop", detail: "Finish check-in and drop checked baggage." },
@@ -199,6 +214,8 @@ export default function GuidePage() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [autoAdvancedTriggered, setAutoAdvancedTriggered] = useState(false); // To show a cool UI flash when it auto-updates
   const [journeyCompleteNotification, setJourneyCompleteNotification] = useState(false);
+  const [activeDetour, setActiveDetour] = useState<DetourTarget | null>(null);
+  const [arrivedAtDetour, setArrivedAtDetour] = useState(false);
   const lastAnnouncementKeyRef = useRef("");
   const isFirstAnnouncementRef = useRef(true);
 
@@ -239,7 +256,10 @@ export default function GuidePage() {
   const progress = useMemo(() => Math.round((stepIndex / Math.max(1, steps.length - 1)) * 100), [stepIndex]);
   const currentStep = steps[stepIndex];
   const activeGuide = stepGuide[currentStep.id as keyof typeof stepGuide] ?? stepGuide.arrive;
-  const currentTarget = useMemo(() => getTargetForStep(currentStep.id, flight.gate), [currentStep.id, flight.gate]);
+  const currentTarget = useMemo(() => {
+    if (activeDetour) return { name: activeDetour.name, lat: activeDetour.lat, lon: activeDetour.lon };
+    return getTargetForStep(currentStep.id, flight.gate);
+  }, [activeDetour, currentStep.id, flight.gate]);
   
   const metersToTarget = useMemo(
     () => (coords && currentTarget ? haversineMeters(coords, { lat: currentTarget.lat, lon: currentTarget.lon }) : null),
@@ -254,24 +274,48 @@ export default function GuidePage() {
     const ARRIVAL_THRESHOLD_METERS = 40; 
 
     if (metersToTarget !== null && metersToTarget <= ARRIVAL_THRESHOLD_METERS) {
-      if (stepIndex < steps.length - 1) {
-        
-        // Trigger a nice UI glow effect
-        setAutoAdvancedTriggered(true);
-        setTimeout(() => setAutoAdvancedTriggered(false), 3000);
+      if (activeDetour) {
+        if (!arrivedAtDetour) {
+          setArrivedAtDetour(true);
+          setAutoAdvancedTriggered(true);
+          setTimeout(() => setAutoAdvancedTriggered(false), 3000);
+        }
+      } else {
+        if (stepIndex < steps.length - 1) {
+          
+          // Trigger a nice UI glow effect
+          setAutoAdvancedTriggered(true);
+          setTimeout(() => setAutoAdvancedTriggered(false), 3000);
 
-        // Advance the step automatically!
-        setStepIndex((prev) => prev + 1);
-        
-        // If they have voice enabled, it will automatically read the next step's prompt.
-      } else if (stepIndex === steps.length - 1) {
-        setJourneyCompleteNotification(true);
+          // Advance the step automatically!
+          setStepIndex((prev) => prev + 1);
+          
+          // If they have voice enabled, it will automatically read the next step's prompt.
+        } else if (stepIndex === steps.length - 1) {
+          setJourneyCompleteNotification(true);
+        }
       }
     }
-  }, [metersToTarget, stepIndex]);
+  }, [metersToTarget, stepIndex, activeDetour, arrivedAtDetour]);
   // ==========================================
 
   const friendlyData = useMemo(() => {
+    if (activeDetour) {
+      const distanceContext = metersToTarget === null 
+        ? `I am routing you to ${activeDetour.name}.`
+        : arrivedAtDetour 
+          ? `You have arrived at ${activeDetour.name}! Take your time, and tap 'Resume Journey' when you are ready to continue.`
+          : `You are ${metersToTarget} meters away from ${activeDetour.name}. Follow the map.`;
+
+      return {
+        spokenText: distanceContext,
+        points: [
+          { icon: SVGIcons[activeDetour.icon], text: `Detour active: ${activeDetour.name}` },
+          { icon: SVGIcons.Location, text: distanceContext }
+        ]
+      };
+    }
+
     if (!currentTarget) {
       const text = `Let's focus on ${currentStep.title}.`;
       return {
@@ -339,14 +383,19 @@ export default function GuidePage() {
       spokenText: `${greeting} ${distanceContext} ${stepSpecificTip ? stepSpecificTip + " " : ""}${activeGuide.objective} Quick tip: ${activeGuide.proTip}`,
       points: points
     };
-  }, [currentTarget, metersToTarget, currentStep.title, currentStep.id, activeGuide]);
+  }, [currentTarget, metersToTarget, currentStep.title, currentStep.id, activeGuide, activeDetour, arrivedAtDetour]);
 
   const mapEmbedUrl = useMemo(() => {
-    if (!currentTarget) return "";
+    // Center the embedded map on the user's live location if available
+    // so they can actively see themselves being tracked.
     if (coords) {
-      return `https://maps.google.com/maps?saddr=${coords.lat},${coords.lon}&daddr=${currentTarget.lat},${currentTarget.lon}&z=18&output=embed`;
+      return `https://maps.google.com/maps?q=${coords.lat},${coords.lon}&z=18&output=embed`;
     }
-    return `https://maps.google.com/maps?q=${currentTarget.lat},${currentTarget.lon}&z=18&output=embed`;
+    // Fallback to the target destination if location is not yet available
+    if (currentTarget) {
+      return `https://maps.google.com/maps?q=${currentTarget.lat},${currentTarget.lon}&z=18&output=embed`;
+    }
+    return "";
   }, [coords, currentTarget]);
 
   const currentLang = localStorage.getItem("aeroguide_global_language") || "en";
@@ -381,22 +430,27 @@ export default function GuidePage() {
 
   useEffect(() => {
     if (!micAllowed) return;
-    const key = `${flight.flightNo}-${stepIndex}-${currentTarget?.name ?? "none"}`;
+    const key = `${flight.flightNo}-${stepIndex}-${currentTarget?.name ?? "none"}-${arrivedAtDetour ? 'arrived' : 'moving'}`;
     if (lastAnnouncementKeyRef.current === key) return;
     
     lastAnnouncementKeyRef.current = key;
     setIsSpeaking(true);
     
-    const comprehensiveText = [
-      ...friendlyData.points.map(pt => pt.text),
-      `Here are your full guide instructions for ${activeGuide.heading}:`,
-      ...activeGuide.points,
-      `Please prepare these items: ${activeGuide.prepare.join(", ")}.`,
-      `Why this is important: ${activeGuide.why}`,
-      `Quality check: ${activeGuide.qualityChecks.join(" ")}`,
-      `Common mistake to avoid: ${activeGuide.commonMistakes.join(" ")}`,
-      `Estimated time: ${activeGuide.timeHint}.`
-    ].join(". ");
+    let comprehensiveText = "";
+    if (activeDetour) {
+      comprehensiveText = friendlyData.spokenText;
+    } else {
+      comprehensiveText = [
+        ...friendlyData.points.map(pt => pt.text),
+        `Here are your full guide instructions for ${activeGuide.heading}:`,
+        ...activeGuide.points,
+        `Please prepare these items: ${activeGuide.prepare.join(", ")}.`,
+        `Why this is important: ${activeGuide.why}`,
+        `Quality check: ${activeGuide.qualityChecks.join(" ")}`,
+        `Common mistake to avoid: ${activeGuide.commonMistakes.join(" ")}`,
+        `Estimated time: ${activeGuide.timeHint}.`
+      ].join(". ");
+    }
     
     translateForVoice(comprehensiveText, currentLang).then((translatedText) => {
       publishVoiceEvent({ source: "guide", text: translatedText });
@@ -404,7 +458,7 @@ export default function GuidePage() {
       isFirstAnnouncementRef.current = false;
       setTimeout(() => setIsSpeaking(false), Math.max(5000, translatedText.length * 50)); 
     });
-  }, [currentTarget?.name, flight.flightNo, friendlyData.spokenText, friendlyData.points, micAllowed, stepIndex, speakLang, currentLang]);
+  }, [currentTarget?.name, flight.flightNo, friendlyData.spokenText, friendlyData.points, micAllowed, stepIndex, speakLang, currentLang, activeDetour, arrivedAtDetour, activeGuide]);
 
   const enableMicForVoiceGuide = async () => {
     const allowed = await requestMicrophonePermission();
@@ -513,7 +567,13 @@ export default function GuidePage() {
             </button>
             <button 
               className={`rounded-xl px-6 py-3 text-sm font-bold shadow-sm transition-all ${themeMode === 'dark' ? 'bg-gradient-to-r from-[#1B2845] to-[#5A77A2] text-white hover:brightness-110' : 'bg-gradient-to-r from-[#2C6CBC] via-[#71C3F7] to-[#F5F5F5] text-slate-900 hover:brightness-95'}`}
-              onClick={() => navigate(`/map?gate=${encodeURIComponent(flight.gate)}`)}
+              onClick={() => {
+                if (activeDetour) {
+                  navigate(`/map?lat=${activeDetour.lat}&lon=${activeDetour.lon}&name=${encodeURIComponent(activeDetour.name)}`);
+                } else {
+                  navigate(`/map?gate=${encodeURIComponent(flight.gate)}`);
+                }
+              }}
             >
               Map Route
             </button>
@@ -648,67 +708,135 @@ export default function GuidePage() {
             </div>
 
             <div className={`rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-6 shadow-xl backdrop-blur-md transition-all duration-500 ${autoAdvancedTriggered ? 'scale-[1.02] shadow-[0_0_30px_rgba(253,185,19,0.3)]' : ''}`}>
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-1">
-                {activeGuide.heading}
-              </h3>
-              <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-6">{activeGuide.objective}</div>
-              
-              <div className="space-y-4">
-                {activeGuide.points.map((p: string, idx: number) => (
-                  <div key={p} className="flex gap-4 items-start">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-aeroguide-gold/20 text-aeroguide-navy dark:text-aeroguide-gold text-xs font-bold">
-                      {idx + 1}
-                    </span>
-                    <span className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{p}</span>
+              {activeDetour ? (
+                <div className="py-4 text-center">
+                  <div className="w-16 h-16 bg-aeroguide-gold/20 text-aeroguide-gold rounded-full flex items-center justify-center mx-auto mb-4">
+                    {SVGIcons[activeDetour.icon]}
                   </div>
-                ))}
-              </div>
-
-              <div className="mt-8 pt-6 border-t border-slate-200 dark:border-white/10">
-                <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">Prepare these items</div>
-                <div className="flex flex-wrap gap-2">
-                  {activeGuide.prepare.map((item: string) => (
-                    <span key={item} className="rounded-lg border border-slate-200 dark:border-white/20 bg-white dark:bg-white/10 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 shadow-sm">
-                      {item}
-                    </span>
-                  ))}
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">
+                    Pit Stop: {activeDetour.name}
+                  </h3>
+                  <p className="text-slate-500 dark:text-slate-400 mb-8">
+                    Your main journey is paused. Follow the map to your selected pit stop.
+                  </p>
+                  
+                  <button
+                    onClick={() => {
+                      setActiveDetour(null);
+                      setArrivedAtDetour(false);
+                      setAutoAdvancedTriggered(true);
+                      setTimeout(() => setAutoAdvancedTriggered(false), 3000);
+                      
+                      if (micAllowed) {
+                        const enText = `Resuming your journey to ${activeGuide.heading}.`;
+                        translateForVoice(enText, currentLang).then(translated => {
+                          publishVoiceEvent({ source: "guide", text: translated });
+                          speakText(translated, { rate: 0.97, lang: speakLang });
+                        });
+                      }
+                    }}
+                    className="w-full rounded-xl px-6 py-4 text-sm font-bold shadow-lg transition-all bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white"
+                  >
+                    Resume Main Journey
+                  </button>
                 </div>
+              ) : (
+                <>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-1">
+                    {activeGuide.heading}
+                  </h3>
+                  <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-6">{activeGuide.objective}</div>
+                  
+                  <div className="space-y-4">
+                    {activeGuide.points.map((p: string, idx: number) => (
+                      <div key={p} className="flex gap-4 items-start">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-aeroguide-gold/20 text-aeroguide-navy dark:text-aeroguide-gold text-xs font-bold">
+                          {idx + 1}
+                        </span>
+                        <span className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{p}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-8 pt-6 border-t border-slate-200 dark:border-white/10">
+                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">Prepare these items</div>
+                    <div className="flex flex-wrap gap-2">
+                      {activeGuide.prepare.map((item: string) => (
+                        <span key={item} className="rounded-lg border border-slate-200 dark:border-white/20 bg-white dark:bg-white/10 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 shadow-sm">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {!activeDetour && (
+              <div className="flex gap-4 w-full">
+                <button
+                  onClick={() => setStepIndex((v) => Math.max(0, v - 1))}
+                  disabled={stepIndex === 0}
+                  className={`w-1/3 rounded-xl px-4 py-4 text-sm font-bold shadow-lg transition-all ${
+                    stepIndex === 0 
+                      ? 'bg-slate-200 dark:bg-white/5 text-slate-400 cursor-not-allowed border dark:border-white/10'
+                      : 'bg-white dark:bg-white/10 border border-slate-300 dark:border-white/20 text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/20'
+                  }`}
+                >
+                  Previous
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (stepIndex < steps.length - 1) setStepIndex((v) => v + 1);
+                    else setJourneyCompleteNotification(true);
+                  }}
+                  className={`flex-1 rounded-xl px-6 py-4 text-sm font-bold shadow-lg transition-all ${
+                    stepIndex >= steps.length - 1 
+                      ? 'bg-green-600 dark:bg-green-500 text-white hover:bg-green-700 dark:hover:bg-green-600'
+                      : 'bg-slate-800 dark:bg-white/10 border dark:border-white/20 text-white hover:bg-slate-700 dark:hover:bg-white/20'
+                  }`}
+                >
+                  {stepIndex >= steps.length - 1 ? "Complete Journey" : "Manual Override: Next Step"}
+                </button>
               </div>
-            </div>
-
-            <div className="flex gap-4 w-full">
-              <button
-                onClick={() => setStepIndex((v) => Math.max(0, v - 1))}
-                disabled={stepIndex === 0}
-                className={`w-1/3 rounded-xl px-4 py-4 text-sm font-bold shadow-lg transition-all ${
-                  stepIndex === 0 
-                    ? 'bg-slate-200 dark:bg-white/5 text-slate-400 cursor-not-allowed border dark:border-white/10'
-                    : 'bg-white dark:bg-white/10 border border-slate-300 dark:border-white/20 text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/20'
-                }`}
-              >
-                Previous
-              </button>
-
-              <button
-                onClick={() => {
-                  if (stepIndex < steps.length - 1) setStepIndex((v) => v + 1);
-                  else setJourneyCompleteNotification(true);
-                }}
-                className={`flex-1 rounded-xl px-6 py-4 text-sm font-bold shadow-lg transition-all ${
-                  stepIndex >= steps.length - 1 
-                    ? 'bg-green-600 dark:bg-green-500 text-white hover:bg-green-700 dark:hover:bg-green-600'
-                    : 'bg-slate-800 dark:bg-white/10 border dark:border-white/20 text-white hover:bg-slate-700 dark:hover:bg-white/20'
-                }`}
-              >
-                {stepIndex >= steps.length - 1 ? "Complete Journey" : "Manual Override: Next Step"}
-              </button>
-            </div>
+            )}
 
           </div>
 
           <div className="space-y-6 flex flex-col">
             
-            <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-4 shadow-xl backdrop-blur-md flex-1 min-h-[500px] h-full flex flex-col">
+            {/* Quick Pit Stops Menu */}
+            <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-4 shadow-sm backdrop-blur-md">
+              <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3 px-2">Quick Pit Stops</div>
+              <div className="grid grid-cols-4 gap-2">
+                {detourLocations.map(detour => (
+                  <button
+                    key={detour.id}
+                    onClick={() => {
+                      setActiveDetour(detour);
+                      setArrivedAtDetour(false);
+                      setAutoAdvancedTriggered(true);
+                      setTimeout(() => setAutoAdvancedTriggered(false), 3000);
+                    }}
+                    className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all ${
+                      activeDetour?.id === detour.id 
+                        ? 'border-aeroguide-gold bg-aeroguide-gold/10 text-aeroguide-gold shadow-sm' 
+                        : 'border-slate-200 dark:border-white/10 bg-white dark:bg-black/20 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="w-8 h-8 flex items-center justify-center mb-1">
+                      {SVGIcons[detour.icon]}
+                    </div>
+                    <span className="text-[10px] font-bold text-center leading-tight whitespace-nowrap overflow-hidden text-ellipsis w-full">
+                      {detour.name.split(' ')[0]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={`rounded-[24px] border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-4 shadow-xl backdrop-blur-md flex-1 min-h-[500px] h-full flex flex-col transition-all duration-500 ${activeDetour ? 'border-orange-400/50 shadow-[0_0_20px_rgba(251,146,60,0.15)]' : ''}`}>
               <div className="flex justify-between items-center mb-3 px-2">
                 <div>
                   <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Live Step Map</div>

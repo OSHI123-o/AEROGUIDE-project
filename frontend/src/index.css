@@ -83,6 +83,16 @@ body,
   animation: fadeIn 0.45s ease-out both;
 }
 
+@keyframes slow-zoom {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.animate-slow-zoom {
+  animation: slow-zoom 30s ease-in-out infinite;
+}
+
 .glass-panel {
   background: linear-gradient(
     180deg,
@@ -338,8 +348,8 @@ body,
   position: fixed;
   right: 20px;
   bottom: 90px;
-  width: min(390px, calc(100vw - 24px));
-  max-height: 78vh;
+  width: min(460px, calc(100vw - 24px));
+  max-height: 85vh;
   z-index: 50;
   display: grid;
   grid-template-rows: auto 1fr auto;
@@ -616,4 +626,44 @@ body,
   align-items: center;
   padding: 0 2rem;
   font-family: 'Inter', sans-serif;
+}
+
+/* ── Google Maps InfoWindow – Amenity Hover Tooltip ── */
+.gm-style .gm-style-iw-c {
+  padding: 0 !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.45) !important;
+  overflow: visible !important;
+  max-width: 220px !important;
+}
+
+.gm-style .gm-style-iw-d {
+  overflow: hidden !important;
+  padding: 0 !important;
+  max-height: none !important;
+}
+
+/* Hide the default close button on hover tooltips */
+.gm-style .gm-style-iw-c button.gm-ui-hover-effect,
+.gm-style .gm-style-iw-tc {
+  display: none !important;
+}
+
+/* Hide the default tail/arrow */
+.gm-style .gm-style-iw-t::after {
+  display: none !important;
+}
+
+/* Amenity marker image – circular clip on map */
+.gm-style img[src*="unsplash"] {
+  border-radius: 50%;
+  border: 2.5px solid #fff;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gm-style img[src*="unsplash"]:hover {
+  transform: scale(1.15);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
 }

@@ -76,6 +76,16 @@ export const pois = [
   "image": "https://images.unsplash.com/photo-1530521954074-e64f6810b32d?w=500&auto=format&fit=crop&q=60"
 },
 {
+  "id": "poi-4b",
+  "name": "Gate A13",
+  "category": "gate",
+  "lat": 7.1805,
+  "lon": 79.8849,
+  "floor": "Level 1",
+  "description": "Departure Gate A13.",
+  "image": "https://images.unsplash.com/photo-1530521954074-e64f6810b32d?w=500&auto=format&fit=crop&q=60"
+},
+{
   "id": "poi-5",
   "name": "Mini Mart",
   "category": "shop",

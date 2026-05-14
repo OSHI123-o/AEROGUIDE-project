@@ -6,6 +6,7 @@ import { requestLogger } from "./middlewares/requestLogger.js";
 import { notFound } from "./middlewares/notFound.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
 import { getEnvConfig } from "./config/env.js";
 
 export function createApp(logger: Logger) {
@@ -40,6 +41,7 @@ export function createApp(logger: Logger) {
 
   app.use("/api", authRoutes);
   app.use("/api", bookingRoutes);
+  app.use("/api", chatRoutes);
   app.use(notFound);
 
   return app;

@@ -180,6 +180,21 @@ export default function BoardingPassPage() {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-8px); }
         }
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
         @keyframes routePulse {
           0%, 100% { opacity: 0.65; }
           50% { opacity: 1; }
@@ -204,7 +219,24 @@ export default function BoardingPassPage() {
         }
       `}</style>
 
-      {/* Dashboard-style subtle grid overlay */}
+      {/* Animated Blobs Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        {isDark ? (
+          <>
+            <div className="absolute top-0 -left-4 w-72 h-72 bg-aeroguide-blue/20 rounded-full mix-blend-screen filter blur-3xl opacity-70 animate-blob"></div>
+            <div className="absolute top-0 -right-4 w-72 h-72 bg-purple-900/20 rounded-full mix-blend-screen filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-900/20 rounded-full mix-blend-screen filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
+          </>
+        ) : (
+          <>
+            <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
+            <div className="absolute top-0 -right-4 w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-sky-200 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
+          </>
+        )}
+      </div>
+
+      {/* Subtle grid overlay */}
       <div 
         className="absolute inset-0 z-0 pointer-events-none"
         style={isDark ? {
@@ -329,30 +361,48 @@ export default function BoardingPassPage() {
               </div>
 
               <div className="boarding-content-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 16 }}>
-                {/* Box 2: Next Step */}
-                <div style={{ borderRadius: 28, padding: "22px", background: isDark ? "rgba(15,23,42,0.82)" : "rgba(15,23,42,0.82)", border: borderSoft, color: "#eff6ff", display: "flex", flexDirection: "column" }}>
-                  <div style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(219,234,254,0.64)" }}>Next Step</div>
-                  <div style={{ marginTop: 12, fontSize: 26, fontWeight: 800, lineHeight: 1.1 }}>
-                    Proceed through
-                    <br />
-                    Terminal {flight.terminal}
-                  </div>
-                  <div style={{ marginTop: "auto", paddingTop: 16, color: "rgba(226,232,240,0.76)", fontSize: 14, lineHeight: 1.5 }}>
-                    Use airport signs and keep moving toward gate {flight.gate} before the boarding window opens.
+                {/* Box 2: Next Step Widget */}
+                <div className={`relative overflow-hidden group rounded-3xl p-6 border ${isDark ? 'border-aeroguide-blue/30 bg-slate-900/80' : 'border-blue-200 bg-blue-50'} text-slate-800`}>
+                  <div className={`absolute inset-0 opacity-20 transition-opacity duration-500 group-hover:opacity-40 bg-gradient-to-br ${isDark ? 'from-aeroguide-blue to-purple-600' : 'from-blue-400 to-indigo-500'}`}></div>
+                  <div className="relative z-10 flex flex-col h-full">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xl">✨</span>
+                      <div className={`text-xs font-black tracking-[0.16em] uppercase ${isDark ? 'text-blue-300' : 'text-blue-600'}`}>Next Step</div>
+                    </div>
+                    <div className={`mt-2 text-2xl font-black leading-[1.1] ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Proceed through<br />Terminal {flight.terminal}
+                    </div>
+                    <div className={`mt-auto pt-4 text-sm font-medium leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                      Follow airport signs and proceed to gate <strong className={isDark ? 'text-white' : 'text-slate-900'}>{flight.gate}</strong> before the boarding window opens.
+                    </div>
+                    
+                    {/* Glowing Progress Indicator */}
+                    <div className="mt-5 w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 relative">
+                      <div className={`h-2.5 rounded-full ${isDark ? 'bg-aeroguide-blue' : 'bg-blue-500'} shadow-[0_0_10px_rgba(143,118,255,0.8)]`} style={{ width: '45%' }}></div>
+                      <div className="absolute top-1/2 -translate-y-1/2 left-[45%] -translate-x-1/2 w-5 h-5 rounded-full bg-white shadow-md flex items-center justify-center">
+                        <PlaneGlyph size={12} color={isDark ? "#8f76ff" : "#3b82f6"} />
+                      </div>
+                    </div>
+                    <div className={`mt-2 text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'} text-right`}>45 mins to boarding</div>
                   </div>
                 </div>
 
                 {/* Box 3: Airport Checklist */}
-                <div style={{ borderRadius: 28, padding: "22px", background: chipBg, border: borderSoft, display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ color: textMuted, fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>Airport Checklist</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, justifyItems: "center" }}>
+                <div style={{ borderRadius: 28, padding: "24px", background: chipBg, border: borderSoft, display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div style={{ color: textMuted, fontSize: 12, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" }}>Airport Checklist</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, justifyItems: "center" }}>
                     {[
-                      `Passport and PNR ${flight.pnr} should stay ready for inspection.`,
-                      `Confirm terminal ${flight.terminal} and recheck gate ${flight.gate}.`,
-                      `Reach boarding area before ${formatClock(details.boardingTime)}.`,
+                      { icon: "🛂", text: `Keep passport and PNR ready for inspection.` },
+                      { icon: "🏢", text: `Confirm terminal ${flight.terminal} and gate ${flight.gate}.` },
+                      { icon: "⏰", text: `Reach boarding area before ${formatClock(details.boardingTime)}.` },
                     ].map((item) => (
-                      <div key={item} style={{ borderRadius: 18, padding: "10px 14px", background: isDark ? "rgba(15,23,42,0.45)" : "rgba(255,255,255,0.58)", color: textSoft, fontSize: 13, fontWeight: 500 }}>
-                        {item}
+                      <div key={item.text} className={`flex items-start gap-3 rounded-2xl p-3 transition-all ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-white/60 hover:bg-white/80 shadow-sm'}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-sm shrink-0 ${isDark ? 'bg-[#0B1021]' : 'bg-slate-50'}`}>
+                          {item.icon}
+                        </div>
+                        <div className={`text-sm font-medium leading-snug pt-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          {item.text}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -363,7 +413,7 @@ export default function BoardingPassPage() {
         </section>
 
         <section
-          className="boarding-pass-shell"
+          className="boarding-pass-shell group relative"
           style={{
             position: "relative",
             borderRadius: 32,
@@ -379,7 +429,10 @@ export default function BoardingPassPage() {
             maxWidth: 520,
           }}
         >
-          <div style={{ position: "absolute", left: "50%", top: 0, transform: "translate(-50%, -48%)", width: 34, height: 34, borderRadius: "50%", border: isDark ? "3px solid rgba(255,255,255,0.12)" : "3px solid rgba(255,255,255,0.75)", background: "linear-gradient(180deg, #89c5ff, #66a7ff)", display: "grid", placeItems: "center" }}>
+          {/* Top Edge Glow */}
+          <div className={`absolute top-0 left-0 right-0 h-1 ${isDark ? 'bg-gradient-to-r from-transparent via-aeroguide-blue to-transparent' : 'bg-gradient-to-r from-transparent via-blue-400 to-transparent'} opacity-50`}></div>
+
+          <div style={{ position: "absolute", left: "50%", top: 0, transform: "translate(-50%, -48%)", width: 34, height: 34, borderRadius: "50%", border: isDark ? "3px solid rgba(255,255,255,0.12)" : "3px solid rgba(255,255,255,0.75)", background: "linear-gradient(180deg, #89c5ff, #66a7ff)", display: "grid", placeItems: "center", zIndex: 10 }}>
             <PlaneGlyph size={14} color="#ffffff" />
           </div>
 
@@ -400,10 +453,13 @@ export default function BoardingPassPage() {
               <div style={{ marginTop: 6, fontSize: 44, lineHeight: 1, fontWeight: 900, color: textMain, letterSpacing: "-0.05em" }}>{flight.originCode}</div>
               <div style={{ marginTop: 6, color: textSoft, fontSize: 13 }}>{flight.originCity}</div>
             </div>
-            <div style={{ textAlign: "center", paddingTop: 18 }}>
+            <div style={{ textAlign: "center", paddingTop: 18, position: "relative" }}>
               <div style={{ color: textMain, fontWeight: 700, fontSize: 13 }}>{formatFullDate(departure)}</div>
-              <div style={{ marginTop: 10, display: "flex", justifyContent: "center" }}>
-                <PlaneGlyph size={20} color={textMain} />
+              <div style={{ marginTop: 10, display: "flex", justifyContent: "center", alignItems: "center", position: "relative" }}>
+                <div className={`absolute top-1/2 left-0 right-0 h-0.5 -translate-y-1/2 border-t-2 border-dashed ${isDark ? 'border-slate-700' : 'border-slate-300'}`}></div>
+                <div className="relative z-10 bg-inherit px-2" style={{ background: panelBg }}>
+                  <PlaneGlyph size={20} color={textMain} />
+                </div>
               </div>
               <div style={{ marginTop: 10, color: textMain, fontWeight: 700, fontSize: 13 }}>{formatDuration(departure, arrival)}</div>
             </div>
@@ -427,18 +483,25 @@ export default function BoardingPassPage() {
             </div>
           </div>
 
-          <div style={{ marginTop: 22 }}>
-            <div
-              aria-hidden="true"
-              style={{
-                height: 74,
-                borderRadius: 12,
-                background: isDark
-                  ? "repeating-linear-gradient(90deg, #f8fafc 0 2px, transparent 2px 5px, #f8fafc 5px 7px, transparent 7px 10px, #f8fafc 10px 11px, transparent 11px 13px)"
-                  : "repeating-linear-gradient(90deg, #0f172a 0 2px, transparent 2px 5px, #0f172a 5px 7px, transparent 7px 10px, #0f172a 10px 11px, transparent 11px 13px)",
-              }}
-            />
-            <div style={{ marginTop: 8, textAlign: "center", fontSize: 12, color: textMuted, letterSpacing: "0.32em", paddingLeft: "0.32em" }}>
+          {/* Perforated Divider with Cutouts */}
+          <div className="relative my-8">
+            <div className={`absolute -left-6 top-1/2 -translate-y-1/2 w-6 h-10 rounded-r-full shadow-inner ${isDark ? 'bg-[#091530]' : 'bg-[#f8fafc]'} border-r border-t border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}></div>
+            <div className={`border-t-2 border-dashed ${isDark ? 'border-slate-700' : 'border-slate-300'}`}></div>
+            <div className={`absolute -right-6 top-1/2 -translate-y-1/2 w-6 h-10 rounded-l-full shadow-inner ${isDark ? 'bg-[#091530]' : 'bg-[#f8fafc]'} border-l border-t border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}></div>
+          </div>
+
+          <div className="flex flex-col items-center justify-center">
+            <div className={`p-3 rounded-2xl ${isDark ? 'bg-white' : 'bg-white shadow-sm border border-slate-100'}`}>
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(barcode)}&color=000000&bgcolor=ffffff`}
+                alt="Boarding Pass QR Code"
+                width={160}
+                height={160}
+                className="rounded-lg"
+                style={{ mixBlendMode: 'multiply' }}
+              />
+            </div>
+            <div style={{ marginTop: 12, textAlign: "center", fontSize: 13, color: textMuted, letterSpacing: "0.4em", paddingLeft: "0.4em", fontWeight: 700 }}>
               {barcode}
             </div>
           </div>

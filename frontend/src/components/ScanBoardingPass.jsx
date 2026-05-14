@@ -234,19 +234,22 @@ export default function ScanBoardingPass() {
         <span>☀️</span> <span style={{ fontWeight: 600 }}>28°C</span> <span style={{ opacity: 0.7 }}>CMB</span>
       </div>
 
-      <div style={{ textAlign: 'center', marginBottom: '3rem', zIndex: 10 }}>
-        <h1 style={{
-          fontSize: '4rem',
-          fontWeight: 900,
-          margin: 0,
-          background: 'linear-gradient(135deg, #14b8a6 0%, #f59e0b 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          letterSpacing: '-2px',
-          lineHeight: 1.1
-        }}>
-          Aero Guide
-        </h1>
+      <div style={{ textAlign: 'center', marginBottom: '3rem', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'center' }}>
+          <img src="/src/assets/logo.png" alt="AeroGuide Logo" style={{ height: "64px", width: "64px", objectFit: "contain" }} />
+          <h1 style={{
+            fontSize: '4rem',
+            fontWeight: 900,
+            margin: 0,
+            background: 'linear-gradient(135deg, #14b8a6 0%, #f59e0b 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            letterSpacing: '-2px',
+            lineHeight: 1.1
+          }}>
+            Aero Guide
+          </h1>
+        </div>
         <p style={{ fontSize: '1.2rem', color: '#94a3b8', marginTop: '0.5rem' }}>
           Your intelligent airport companion
         </p>

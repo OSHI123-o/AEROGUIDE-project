@@ -331,15 +331,41 @@ export default function RightSideChatbot() {
     }
 
     setIsTyping(true);
-    window.setTimeout(() => {
-      const reply = buildReply(value, readActiveFlight());
+    window.setTimeout(async () => {
+      let reply: Reply;
+      
+      const normalized = value.toLowerCase();
+      // Try local fast responses for internal app context
+      if (normalized.includes("snapshot") || normalized.includes("weather") || normalized.includes("gate") || normalized.includes("hello")) {
+         reply = buildReply(value, readActiveFlight());
+      } else {
+         try {
+            const history = messages.map(m => ({ role: m.role, text: m.text }));
+            const res = await fetch('/api/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: value, history })
+            });
+            const data = await res.json();
+            if (data.reply) {
+               reply = { text: data.reply };
+            } else if (data.error) {
+               reply = { text: data.error };
+            } else {
+               reply = buildReply(value, readActiveFlight());
+            }
+         } catch (e) {
+            reply = buildReply(value, readActiveFlight());
+         }
+      }
+
       setMessages((prev) => [...prev, newMessage("assistant", reply.text, "chatbot", reply.suggestions)]);
       setIsTyping(false);
 
       if (voiceEnabled && micAllowed) {
         speakText(reply.text, { rate: 0.98, pitch: 1, lang: "en-US" });
       }
-    }, 300 + Math.random() * 450);
+    }, 300);
   };
 
   const enableMic = async () => {

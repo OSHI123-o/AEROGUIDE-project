@@ -1,5 +1,6 @@
 import React from "react";
 import { NavLink, Outlet } from "react-router-dom";
+import logo from "../assets/logo.png";
 
 function TopNav() {
   const linkClass = ({ isActive }) => "navLink" + (isActive ? " active" : "");
@@ -7,7 +8,7 @@ function TopNav() {
   return (
     <div className="topNav">
       <div className="brand">
-        <span className="dot" />
+        <img src={logo} alt="AeroGuide Logo" style={{ height: "32px", width: "32px", objectFit: "contain", marginRight: "8px" }} />
         <div>
           <div className="brandTitle">Aero Guide</div>
           <div className="brandSub">Airport navigation demo</div>

@@ -78,6 +78,17 @@ supabase.auth.onAuthStateChange((event, session) => {
     if (session.user?.email) {
       localStorage.setItem("aeroguide_user_email", session.user.email);
     }
+    
+    // Extract profile metadata (useful for Google/OAuth logins)
+    const metadata = session.user?.user_metadata;
+    if (metadata) {
+      const profile = {
+        firstName: metadata.first_name || metadata.full_name?.split(' ')[0] || '',
+        lastName: metadata.last_name || metadata.full_name?.split(' ').slice(1).join(' ') || '',
+        avatarUrl: metadata.avatar_url || null
+      };
+      localStorage.setItem("aeroguide_user_profile", JSON.stringify(profile));
+    }
   } else if (event === "SIGNED_OUT") {
     setAuthenticated(false);
     localStorage.removeItem("aeroguide_user_email");

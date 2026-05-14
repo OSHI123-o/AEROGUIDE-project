@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getStoredLang, setStoredLang, type AppLang } from '../services/i18n';
 import { setAuthenticated } from '../services/authSession';
 import { supabase } from '../lib/supabaseClient';
@@ -21,6 +21,7 @@ const GENERIC_SIGNUP_ERROR =
 
 export default function Signup() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [language, setLanguage] = useState<Language>(() => getStoredLang());
 
   const [firstName, setFirstName] = useState('');
@@ -29,6 +30,7 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [signupError, setSignupError] = useState('');
 
   const [errors, setErrors] = useState<{
@@ -110,6 +112,30 @@ export default function Signup() {
     setIsFormValid(isValid);
   }, [firstName, lastName, email, password, confirmPassword]);
 
+  useEffect(() => {
+    let isActive = true;
+
+    const restoreSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      const session = data.session;
+
+      if (!isActive || error || !session?.user?.email) {
+        setIsGoogleLoading(false);
+        return;
+      }
+
+      // If we have a session, we're signed in (likely via Google)
+      setIsGoogleLoading(false);
+      navigate('/dashboard');
+    };
+
+    void restoreSession();
+
+    return () => {
+      isActive = false;
+    };
+  }, [navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
@@ -180,6 +206,25 @@ export default function Signup() {
       );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setSignupError('');
+    setIsGoogleLoading(true);
+
+    const redirectUrl = new URL(`${window.location.origin}/signup`);
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl.toString(),
+      },
+    });
+
+    if (error) {
+      setSignupError(error.message || 'Google sign-in failed. Please try again.');
+      setIsGoogleLoading(false);
     }
   };
 
@@ -435,6 +480,28 @@ export default function Signup() {
                   }`}
                 >
                   {isLoading ? 'Creating account...' : 'Create account'}
+                </button>
+
+                <div className="relative py-2">
+                  <div className="absolute inset-x-0 top-1/2 border-t border-slate-300/30" />
+                  <span className="relative mx-auto block w-fit bg-white/10 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 rounded-full backdrop-blur-sm">
+                    Or
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => { void handleGoogleSignIn(); }}
+                  disabled={isGoogleLoading}
+                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300/50 bg-white/40 px-4 py-3 text-sm font-semibold text-slate-800 transition hover:bg-white/60 shadow-sm"
+                >
+                  <svg className="h-5 w-5" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                    <path d="M12 4.66c1.61 0 3.1.56 4.28 1.69l3.19-3.19C17.45 1.14 14.95 0 12 0 7.7 0 3.99 2.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                  </svg>
+                  <span>{isGoogleLoading ? 'Connecting...' : 'Sign up with Google'}</span>
                 </button>
 
                 <p className="text-center mt-3 text-slate-600 text-xs md:text-sm">

@@ -114,7 +114,8 @@ function buildPersonalizedDemoFlights(pnr: string, lastName: string): FlightLook
   const dest = DEMO_DESTINATIONS[seed % DEMO_DESTINATIONS.length];
   const gateNumber = 1 + (seed % 18);
   const gate = `${seed % 2 === 0 ? "A" : "B"}${String(gateNumber).padStart(2, "0")}`;
-  const depHour = 6 + (seed % 12);
+  const rawDepHour = 6 + (seed % 12);
+  const depHour = rawDepHour < 12 ? rawDepHour + 12 : rawDepHour;
   const depMinute = (seed % 4) * 15;
   const flightNumberBase = 200 + (seed % 500);
 

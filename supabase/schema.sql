@@ -1,9 +1,4 @@
--- ============================================================
--- AeroGuide – Supabase Database Schema
--- Run this file in Supabase SQL Editor (Dashboard → SQL Editor)
--- ============================================================
 
--- ────────────────────────────────────────────────────────────
 -- 1. PROFILES — extended user data (linked to auth.users)
 -- ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.profiles (
